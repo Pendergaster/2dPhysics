@@ -1,0 +1,19 @@
+#version 330 core
+
+uniform sampler2D mySamples[30];
+
+
+in DATA
+{
+	vec2 	uv;
+	float	textid; 
+} frag_in;
+
+out vec4 color;
+
+void main()
+{
+	int arrayID = int(frag_in.textid);
+	vec4 textureColor = texture2D(mySamples[arrayID], frag_in.uv);
+    color = textureColor;
+}

@@ -328,6 +328,16 @@ typedef struct
 } Renderer;
 
 void create_render_buffers(Renderer* rend);
+void push_to_renderer(Renderer* rend, vec2* pos, vec2* dimensions, vec4* uv, float rotation, int txtid);
+void render(ShaderHandle* handle, Renderer* in, mat4* camMat);
+
+
+typedef struct
+{
+	mat4	ortho;
+	mat4	camera;
+	ubyte	update;
+} Camera;
 
 int main()
 {
@@ -359,6 +369,9 @@ int main()
 
 	init_keys();
 
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 
 	Texture box = loadTexture(laatikko);
@@ -415,10 +428,10 @@ int main()
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertex_buffer_data), vertex_buffer_data);
 
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(vec2), (void*)0);
-	glVertexAttribDivisor(1, 0);//update every vertex
+	glVertexAttribDivisor(1, 0);
 
 	glBindBuffer(GL_ARRAY_BUFFER, rend.singleObjectBuffer);
-	glBufferData(GL_ARRAY_BUFFER, (sizeof(vec4) + sizeof(float) + sizeof(int)) * DEFAULT_BUFFER_SIZE, NULL, GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, (sizeof(vec4) + sizeof(float) + sizeof(float)) * DEFAULT_BUFFER_SIZE, NULL, GL_DYNAMIC_DRAW);
 
 
 
@@ -428,10 +441,10 @@ int main()
 
 
 	glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, rotation));
-	glVertexAttribDivisor(3, 1);//rotaion
+	glVertexAttribDivisor(3, 1);//rotation
 
 						
-	glVertexAttribPointer(4, 1, GL_INT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, textid));
+	glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, textid));
 	glVertexAttribDivisor(4, 1);//texid
 
 	glBindVertexArray(0);
@@ -440,7 +453,22 @@ int main()
 #undef DEFAULT_BUFFER_SIZE
 	rend.vertdata = malloc(sizeof(VertexData) * 20);
 	rend.uvdata = malloc(sizeof(vec2) * 20);
+	rend.uvSize = 20;
+	rend.vertDsize = 20;
 
+	Camera camera = { 0 };
+	camera.update = 1;
+	mat4 camOr =
+	{
+		1/SCREENWIDHT, 0.f, 0.f, 0.f,
+		0.f, 1 / SCREENHEIGHT, 0.f, 0.f,
+		0.f, 0.f, 0.f, 0.f,
+		0.f, 0.f, 0.f, 1.f,
+	};
+
+	vec4 res = { 0 };
+	vec4 poir = { 400.f,300.f,0.f,1.f };
+	mat4_mult_vec4(&res, &camOr, &poir);
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -465,14 +493,19 @@ int main()
 		{
 		
 		}
-		
-
-
+		vec2 pos = { 0.2f ,0.2f };
+		vec2 dim = { 200 ,200 };
+		vec4 uv = { 0.f, 0.f,1.f,1.f };
+		static float ro = 0.f;
+		ro += 0.01f;
+		push_to_renderer(&rend, &pos, &dim, &uv, ro, box.UserId);
+		create_render_buffers(&rend);
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		glCheckError();
 
+		render(&shader, &rend,&camOr);
 	
 		update_keys();
 		glfwSwapBuffers(window);
@@ -482,7 +515,7 @@ int main()
 	return 1;
 }
 
-void push_to_renderer(Renderer* rend,vec2* pos,vec2* dimensions,vec2* uv,float rotation,int txtid)
+void push_to_renderer(Renderer* rend,vec2* pos,vec2* dimensions,vec4* uv,float rotation,int txtid)
 {
 	if(rend->numVerts + 1 >= rend->vertDsize)
 	{
@@ -495,7 +528,7 @@ void push_to_renderer(Renderer* rend,vec2* pos,vec2* dimensions,vec2* uv,float r
 			return;
 		}
 	}
-	if (rend->numUvs + 1 >= rend->uvSize)
+	if (rend->numUvs + 6 >= rend->uvSize)
 	{
 		rend->uvSize *= 2;
 		vec2* temp= rend->uvdata;
@@ -507,26 +540,62 @@ void push_to_renderer(Renderer* rend,vec2* pos,vec2* dimensions,vec2* uv,float r
 		}
 	}
 	VertexData* data = &rend->vertdata[rend->numVerts++];
-	vec2* uvd = &rend->uvdata[rend->numUvs++];
+	vec2* uvd = &rend->uvdata[rend->numUvs];
+	rend->numUvs += 6;
 
 	vec4 objdata = { pos->x,pos->y,dimensions->x,dimensions->y };
 	data->objectData = objdata;
+	data->rotation = rotation;
+	data->textid = txtid;
+	/*static const float vertex_buffer_data[] = {
+	-0.5f,  0.5f,
+	0.5f, -0.5f,
+	-0.5f, -0.5f,
+
+	-0.5f,  0.5f,
+	0.5f, -0.5f,
+	0.5f,  0.5f,
+};*/
+	uvd->x = uv->x;
+	uvd->y = uv->w;
+	uvd++;
+
+	uvd->x = uv->z;
+	uvd->y = uv->y;
+	uvd++;	
+
+	uvd->x = uv->x;
+	uvd->y = uv->y;
+	uvd++;
+
+	uvd->x = uv->x;
+	uvd->y = uv->w;
+	uvd++;
+
+	uvd->x = uv->z;
+	uvd->y = uv->y;
+	uvd++;
+
+	uvd->x = uv->z;
+	uvd->y = uv->w;	
 
 	rend->texturesToBind[txtid] = 1;
 }
 void create_render_buffers(Renderer* rend)
 {
 	glBindBuffer(GL_ARRAY_BUFFER, rend->singleObjectBuffer);
-	glBufferData(GL_ARRAY_BUFFER, rend->vertDsize* sizeof(VertexData), NULL, GL_DYNAMIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, rend->vertDsize * sizeof(VertexData), rend->vertdata);
+	glBufferData(GL_ARRAY_BUFFER, rend->numVerts * sizeof(VertexData), NULL, GL_DYNAMIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, rend->numVerts * sizeof(VertexData), rend->vertdata);
 
 	glBindBuffer(GL_ARRAY_BUFFER, rend->uvBuffer);
-	glBufferData(GL_ARRAY_BUFFER, rend->uvSize * sizeof(vec2), NULL, GL_DYNAMIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, rend->uvSize * sizeof(vec2), rend->uvdata);
+	glBufferData(GL_ARRAY_BUFFER, rend->numUvs * sizeof(vec2), NULL, GL_DYNAMIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, rend->numUvs * sizeof(vec2), rend->uvdata);
 
 	rend->numUvs = 0;
+	glCheckError();
+
 }
-void render(ShaderHandle* handle, Renderer* in, uint tex)
+void render(ShaderHandle* handle, Renderer* in,mat4* camMat)
 {
 	//bind textures
 	for (int i = 0; i < maxpicfiles; i++)
@@ -535,7 +604,6 @@ void render(ShaderHandle* handle, Renderer* in, uint tex)
 		{
 			glActiveTexture(GL_TEXTURE0 + i);
 			glBindTexture(GL_TEXTURE_2D, textureCache[i].ID);
-
 			in->texturesToBind[i] = 0;
 		}
 	}
@@ -548,13 +616,16 @@ void render(ShaderHandle* handle, Renderer* in, uint tex)
 
 
 	GLint textureUniform = get_uniform_location(handle, "mySamples");
-	glUniform1iv(textureUniform, 30, &sample_Array);
-
+	glUniform1iv(textureUniform, 30, sample_Array);
+	set_mat4(handle, "P", camMat);
+	glCheckError();
 
 	glBindVertexArray(in->vao);
 
 	glDrawArraysInstanced(GL_TRIANGLES, 0, 6, in->numVerts);
 	in->numVerts = 0;
+	glCheckError();
+
 	glBindVertexArray(0);
 	unuse_shader(handle);
 }

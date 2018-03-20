@@ -465,6 +465,8 @@ int main()
 		{
 		
 		}
+		
+
 
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -524,14 +526,12 @@ void create_render_buffers(Renderer* rend)
 
 	rend->numUvs = 0;
 }
-void render(ShaderHandle* handle,Renderer* in,uint tex)
+void render(ShaderHandle* handle, Renderer* in, uint tex)
 {
 	//bind textures
-
-
-	for(int i = 0; i < maxpicfiles; i++)
+	for (int i = 0; i < maxpicfiles; i++)
 	{
-		if(in->texturesToBind[i] == 1)
+		if (in->texturesToBind[i] == 1)
 		{
 			glActiveTexture(GL_TEXTURE0 + i);
 			glBindTexture(GL_TEXTURE_2D, textureCache[i].ID);
@@ -544,10 +544,13 @@ void render(ShaderHandle* handle,Renderer* in,uint tex)
 
 	glBindVertexArray(in->vao);
 
-	//set_matrix(&in->instaShader, "P", camMatrix);
-	GLint textureUniform = get_uniform_location(handle, "mySampler");
-	glUniform1i(textureUniform, 0);
-	glBindTexture(GL_TEXTURE_2D, tex);
+	static const uint sample_Array[30] = { 0 ,1 ,2, 3, 4, 5, 6, 7, 8, 9 ,10 ,11 ,12 ,13, 14 , 15 ,16 ,17,18,19,20 ,21,22,23,24,25,26,27,28,29  };
+
+
+	GLint textureUniform = get_uniform_location(handle, "mySamples");
+	glUniform1iv(textureUniform, 30, &sample_Array);
+
+
 	glBindVertexArray(in->vao);
 
 	glDrawArraysInstanced(GL_TRIANGLES, 0, 6, in->numVerts);

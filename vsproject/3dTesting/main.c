@@ -8,6 +8,7 @@
 #include<mathutil.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+#include "source\smallGenericDynArray.h"
 typedef struct
 {
 	int a;
@@ -77,6 +78,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 }
 int key_pressed(int key)
 {
+
 	return in.keys[key] == 1 && in.lastkeys[key] == 0;
 }
 int key_down(int key)
@@ -329,7 +331,7 @@ typedef struct
 
 void create_render_buffers(Renderer* rend);
 void push_to_renderer(Renderer* rend, vec2* pos, vec2* dimensions, vec4* uv, float rotation, int txtid);
-void render(ShaderHandle* handle, Renderer* in, mat4* camMat);
+void render(ShaderHandle* handle, Renderer* in, mat4* camMat, vec2* campos);
 
 
 typedef struct
@@ -339,6 +341,9 @@ typedef struct
 	ubyte	update;
 } Camera;
 
+
+#include "source\2dphysics.c"
+#include "source\debugrend.c"
 int main()
 {
 	glfwInit();
@@ -458,46 +463,73 @@ int main()
 
 	Camera camera = { 0 };
 	camera.update = 1;
-	mat4 camOr =
-	{
-		1/SCREENWIDHT, 0.f, 0.f, 0.f,
-		0.f, 1 / SCREENHEIGHT, 0.f, 0.f,
-		0.f, 0.f, 0.f, 0.f,
-		0.f, 0.f, 0.f, 1.f,
-	};
-
+	//mat4 camOr =
+	//{
+	//	1/SCREENWIDHT, 0.f, 0.f, 0.f,
+	//	0.f, 1 / SCREENHEIGHT, 0.f, 0.f,
+	//	0.f, 0.f, 0.f, 0.f,
+	//	0.f, 0.f, 0.f, 1.f,
+	//};
+	mat4 camOr = { 0 };
+	orthomat_2d(&camOr, 0, SCREENWIDHT, 0, SCREENHEIGHT);
 	vec4 res = { 0 };
 	vec4 poir = { 400.f,300.f,0.f,1.f };
 	mat4_mult_vec4(&res, &camOr, &poir);
 
+
+	const double dt = 1.0 / 60.0;
+
+	double currentTime = glfwGetTime();
+	double accumulator = 0.0;
+	vec2 campos = { 0 };
+	float cameramovementrate = 5.f;
+
+	DebugRend drend = { 0 };
+	init_debugrend(&drend);
+
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
-		if (key_pressed(GLFW_KEY_ESCAPE))
+		double newTime = glfwGetTime();
+
+		double frameTime = newTime - currentTime;
+		currentTime = newTime;
+		accumulator += frameTime;
+		if (key_down(GLFW_KEY_ESCAPE))
 		{
 			break;
-		}
-		if (key_down(GLFW_KEY_W))
-		{
-			
-		}
-		if (key_down(GLFW_KEY_A))
-		{
-		
-		}
-		if (key_down(GLFW_KEY_D))
-		{
-	
-		}
-		if (key_down(GLFW_KEY_S))
-		{
-		
 		}
 		vec2 pos = { 0.2f ,0.2f };
 		vec2 dim = { 200 ,200 };
 		vec4 uv = { 0.f, 0.f,1.f,1.f };
 		static float ro = 0.f;
 		ro += 0.01f;
+		while (accumulator >= dt)//processloop
+		{
+			accumulator -= dt;
+			if (key_down(GLFW_KEY_W))
+			{
+				campos.y += cameramovementrate;
+			}
+			if (key_down(GLFW_KEY_A))
+			{
+				campos.x -= cameramovementrate;
+			}
+			if (key_down(GLFW_KEY_D))
+			{
+				campos.x += cameramovementrate;
+			}
+			if (key_down(GLFW_KEY_S))
+			{
+				campos.y -= cameramovementrate;
+			}
+			draw_box(&drend, pos, dim, ro);
+
+			update_keys();
+			populate_debugRend_buffers(&drend);
+		}
+
+
 		push_to_renderer(&rend, &pos, &dim, &uv, ro, box.UserId);
 		create_render_buffers(&rend);
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -505,9 +537,14 @@ int main()
 
 		glCheckError();
 
-		render(&shader, &rend,&camOr);
-	
-		update_keys();
+		render(&shader, &rend,&camOr,&campos);
+
+
+		vec3 translate = { .x = (-campos.x) + ((float)SCREENWIDHT) / 2.f,.y = (-campos.y) + ((float)SCREENHEIGHT / 2.f),.z = 0.f };
+		mat4 bind = { 0 };
+		translate_mat4(&bind, &camOr, translate);
+
+		render_debug_lines(&drend, &bind);
 		glfwSwapBuffers(window);
 	}
 	dipose_inputs();
@@ -543,7 +580,7 @@ void push_to_renderer(Renderer* rend,vec2* pos,vec2* dimensions,vec4* uv,float r
 	vec2* uvd = &rend->uvdata[rend->numUvs];
 	rend->numUvs += 6;
 
-	vec4 objdata = { pos->x,pos->y,dimensions->x,dimensions->y };
+	vec4 objdata = { (int)pos->x,(int)pos->y,(int)dimensions->x,(int)dimensions->y };
 	data->objectData = objdata;
 	data->rotation = rotation;
 	data->textid = txtid;
@@ -595,7 +632,7 @@ void create_render_buffers(Renderer* rend)
 	glCheckError();
 
 }
-void render(ShaderHandle* handle, Renderer* in,mat4* camMat)
+void render(ShaderHandle* handle, Renderer* in,mat4* camMat,vec2* campos)
 {
 	//bind textures
 	for (int i = 0; i < maxpicfiles; i++)
@@ -617,7 +654,13 @@ void render(ShaderHandle* handle, Renderer* in,mat4* camMat)
 
 	GLint textureUniform = get_uniform_location(handle, "mySamples");
 	glUniform1iv(textureUniform, 30, sample_Array);
-	set_mat4(handle, "P", camMat);
+	//glm::vec3 translate(-(camera->position.x) + (screenWidht / 2.f), -(camera->position.y) + (screenHeigh / 2.f), 0.0f);
+	//camera->cameraMatrix = glm::translate(camera->orthoMatrix, translate);
+
+	vec3 translate = { .x = (-campos->x) +((float)SCREENWIDHT) / 2.f,.y = (-campos->y)+((float)SCREENHEIGHT / 2.f),.z = 0.f };
+	mat4 bind = {0};
+	translate_mat4(&bind, camMat, translate);
+	set_mat4(handle, "P", bind.mat);
 	glCheckError();
 
 	glBindVertexArray(in->vao);

@@ -124,9 +124,9 @@ void draw_box(DebugRend* rend,const vec2 pos,const vec2 dim,float angle)
 		
 	}
 	vertArray[0] = p1;
-	vertArray[1] = p1;
-	vertArray[2] = p1;
-	vertArray[3] = p1;
+	vertArray[1] = p2;
+	vertArray[2] = p3;
+	vertArray[3] = p4;
 
 	PUSH_NEW_OBJ(rend->indexes, ind++);
 	PUSH_NEW_OBJ(rend->indexes, ind);
@@ -183,25 +183,7 @@ void render_debug_lines(DebugRend* rend, mat4* mat)
 	glBindVertexArray(0);
 	unuse_shader(&rend->shader);
 }
-/*
-void populate_debugrender_buffers(DebugRenderer* drenderer)
-{
-GLuint vertSize = get_array_size<DebugVertex>(drenderer->dyArrDeVert);
-glBindBuffer(GL_ARRAY_BUFFER, drenderer->vbo);
-glBufferData(GL_ARRAY_BUFFER, vertSize * sizeof(DebugVertex), nullptr, GL_DYNAMIC_DRAW);
-glBufferSubData(GL_ARRAY_BUFFER, 0, vertSize * sizeof(DebugVertex), drenderer->dyArrDeVert);
-glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-GLuint indiciesSize = get_array_size<GLuint>(drenderer->dyArrIndi);
-glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, drenderer->ibo);
-glBufferData(GL_ELEMENT_ARRAY_BUFFER, indiciesSize * sizeof(GLuint), nullptr, GL_DYNAMIC_DRAW);
-glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, indiciesSize * sizeof(GLuint), drenderer->dyArrIndi); glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-drenderer->_numElements = indiciesSize;
-clear_array<DebugVertex>(drenderer->dyArrDeVert);
-clear_array<GLuint>(drenderer->dyArrIndi);
-}
-*/
 
 
 

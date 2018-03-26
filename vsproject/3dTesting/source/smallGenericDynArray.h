@@ -59,4 +59,6 @@ TYPE temp = OBJ.buff[--OBJ.num];		  \
 OBJ.buff[INDEX] = temp;\
 }while(0)
 
+#define POP_ARRAY(OBJ,BUFF) BUFF = &OBJ.buff[--OBJ.num];
+
 #define DISPOSE_ARRAY(OBJ) do{ free(OBJ.buff); OBJ.size =  0; OBJ.num = 0;}while(0);

@@ -19,8 +19,7 @@ out DATA
 
 void main()
 {
-	
-	vec2 scaled =  vec2(vert.x*wdata.z,vert.y*wdata.w);
+	vec2 scaled =  vec2(vert.x*wdata.z*2,vert.y*wdata.w*2);
 	vec2 rotated = vec2(cos(rotation) *  scaled.x + (-sin(rotation) * scaled.y) ,cos(rotation) *  scaled.y + sin(rotation) * scaled.x);
 	vec2 position = rotated + vec2(wdata.x,wdata.y);
 	vec4 dcPos = P * vec4(position,0.f,1.f);

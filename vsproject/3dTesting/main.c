@@ -8,6 +8,29 @@
 #include<mathutil.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+
+static int MEMTRACK = 0;
+
+inline void* DEBUG_MALLOC(int size)
+{
+	MEMTRACK++;
+	return malloc(size);
+}
+
+inline void* DEBUG_CALLOC(int COUNT,int SIZE)
+{
+	MEMTRACK++;
+	return calloc(COUNT,SIZE);
+}
+
+#define MEM_DEBUG
+#ifdef  MEM_DEBUG
+#define free(PTR) do{ free(PTR); MEMTRACK--;}while(0)
+#define malloc(SIZE) DEBUG_MALLOC(SIZE)
+#define calloc(COUNT,SIZE) DEBUG_MALLOC(COUNT,SIZE)
+#endif //  MEM_DEBUG
+
+
 #include "source\smallGenericDynArray.h"
 typedef struct
 {
@@ -183,6 +206,8 @@ typedef struct
 } Texture;
 Texture textureCache[maxpicfiles] = {0};
 
+
+
 Texture loadTexture(const int file)
 {
 	if(textureCache[file].ID != 0)
@@ -338,8 +363,18 @@ typedef struct
 {
 	mat4	ortho;
 	mat4	camera;
-	ubyte	update;
+	vec2	pos;
 } Camera;
+
+void init_camera(Camera* cam)
+{
+	orthomat_2d(&cam->ortho, 0, SCREENWIDHT, 0, SCREENHEIGHT);
+}
+void update_camera(Camera* cam)
+{
+	vec3 translate = { .x = (-cam->pos.x) + ((float)SCREENWIDHT) / 2.f,.y = (-cam->pos.y) + ((float)SCREENHEIGHT / 2.f),.z = 0.f };
+	translate_mat4(&cam->camera, &cam->ortho, translate);
+}
 
 
 #include "source\2dphysics.c"
@@ -462,7 +497,7 @@ int main()
 	rend.vertDsize = 20;
 
 	Camera camera = { 0 };
-	camera.update = 1;
+	init_camera(&camera);
 	//mat4 camOr =
 	//{
 	//	1/SCREENWIDHT, 0.f, 0.f, 0.f,
@@ -470,11 +505,10 @@ int main()
 	//	0.f, 0.f, 0.f, 0.f,
 	//	0.f, 0.f, 0.f, 1.f,
 	//};
-	mat4 camOr = { 0 };
-	orthomat_2d(&camOr, 0, SCREENWIDHT, 0, SCREENHEIGHT);
-	vec4 res = { 0 };
-	vec4 poir = { 400.f,300.f,0.f,1.f };
-	mat4_mult_vec4(&res, &camOr, &poir);
+	
+	//vec4 res = { 0 };
+	//vec4 poir = { 400.f,300.f,0.f,1.f };
+	//mat4_mult_vec4(&res, &camOr, &poir);
 
 
 	const double dt = 1.0 / 60.0;
@@ -486,6 +520,22 @@ int main()
 
 	DebugRend drend = { 0 };
 	init_debugrend(&drend);
+
+	PhysicsContext world = { 0 };
+	init_physicsContext(&world);
+	Object* objects[110] = { 0 };
+	for(int i = 0; i < 110; i++)
+	{
+		objects[i] = get_new_body(&world);
+	}
+	for(int i = 0; i < 110; i++)
+	{
+		dispose_body(&world, objects[i]);
+	}
+	for (int i = 0; i < 110; i++)
+	{
+		objects[i] = get_new_body(&world);
+	}
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -499,8 +549,8 @@ int main()
 		{
 			break;
 		}
-		vec2 pos = { 0.2f ,0.2f };
-		vec2 dim = { 200 ,200 };
+		vec2 pos = { 00.f ,00.f };
+		vec2 dim = { 100.f ,100.f};
 		vec4 uv = { 0.f, 0.f,1.f,1.f };
 		static float ro = 0.f;
 		ro += 0.01f;
@@ -509,22 +559,23 @@ int main()
 			accumulator -= dt;
 			if (key_down(GLFW_KEY_W))
 			{
-				campos.y += cameramovementrate;
+				camera.pos.y += cameramovementrate;
 			}
 			if (key_down(GLFW_KEY_A))
 			{
-				campos.x -= cameramovementrate;
+				camera.pos.x -= cameramovementrate;
 			}
 			if (key_down(GLFW_KEY_D))
 			{
-				campos.x += cameramovementrate;
+				camera.pos.x += cameramovementrate;
 			}
 			if (key_down(GLFW_KEY_S))
 			{
-				campos.y -= cameramovementrate;
+				camera.pos.y -= cameramovementrate;
 			}
 			draw_box(&drend, pos, dim, ro);
-
+			vec2 dim2 = { 50,50 };
+			draw_box(&drend, dim, dim2, 0);
 			update_keys();
 			populate_debugRend_buffers(&drend);
 		}
@@ -537,18 +588,30 @@ int main()
 
 		glCheckError();
 
-		render(&shader, &rend,&camOr,&campos);
+		update_camera(&camera);
+
+		render(&shader, &rend,&camera.camera,&campos);
 
 
-		vec3 translate = { .x = (-campos.x) + ((float)SCREENWIDHT) / 2.f,.y = (-campos.y) + ((float)SCREENHEIGHT / 2.f),.z = 0.f };
-		mat4 bind = { 0 };
-		translate_mat4(&bind, &camOr, translate);
+	/*	vec3 translate = { .x = (-campos.x) + ((float)SCREENWIDHT) / 2.f,.y = (-campos.y) + ((float)SCREENHEIGHT / 2.f),.z = 0.f };
+		mat4 bind = { 0 };*/
+		//translate_mat4(&bind, &camera.camera, translate);
 
-		render_debug_lines(&drend, &bind);
+		render_debug_lines(&drend, &camera.camera);
 		glfwSwapBuffers(window);
 	}
+	free(rend.uvdata);
+	free(rend.vertdata);
+	dispose_debug_renderer(&drend);
 	dipose_inputs();
+	dispose_physicsContext(&world);
 	glfwTerminate();
+
+	if(MEMTRACK != 0)
+	{
+		printf("MEMORY NOT BALANCED %d\n",MEMTRACK);
+		FATALERROR;
+	}
 	return 1;
 }
 
@@ -644,23 +707,15 @@ void render(ShaderHandle* handle, Renderer* in,mat4* camMat,vec2* campos)
 			in->texturesToBind[i] = 0;
 		}
 	}
-
 	use_shader(handle);
-
 	glBindVertexArray(in->vao);
 
 	static const uint sample_Array[30] = { 0 ,1 ,2, 3, 4, 5, 6, 7, 8, 9 ,10 ,11 ,12 ,13, 14 , 15 ,16 ,17,18,19,20 ,21,22,23,24,25,26,27,28,29  };
 
-
 	GLint textureUniform = get_uniform_location(handle, "mySamples");
 	glUniform1iv(textureUniform, 30, sample_Array);
-	//glm::vec3 translate(-(camera->position.x) + (screenWidht / 2.f), -(camera->position.y) + (screenHeigh / 2.f), 0.0f);
-	//camera->cameraMatrix = glm::translate(camera->orthoMatrix, translate);
 
-	vec3 translate = { .x = (-campos->x) +((float)SCREENWIDHT) / 2.f,.y = (-campos->y)+((float)SCREENHEIGHT / 2.f),.z = 0.f };
-	mat4 bind = {0};
-	translate_mat4(&bind, camMat, translate);
-	set_mat4(handle, "P", bind.mat);
+	set_mat4(handle, "P", camMat->mat);
 	glCheckError();
 
 	glBindVertexArray(in->vao);
@@ -672,5 +727,4 @@ void render(ShaderHandle* handle, Renderer* in,mat4* camMat,vec2* campos)
 	glBindVertexArray(0);
 	unuse_shader(handle);
 }
-
 //todo set matrix

@@ -27,7 +27,7 @@ inline void* DEBUG_CALLOC(int COUNT,int SIZE)
 #ifdef  MEM_DEBUG
 #define free(PTR) do{ free(PTR); MEMTRACK--;}while(0)
 #define malloc(SIZE) DEBUG_MALLOC(SIZE)
-#define calloc(COUNT,SIZE) DEBUG_MALLOC(COUNT,SIZE)
+#define calloc(COUNT,SIZE) DEBUG_CALLOC(COUNT,SIZE)
 #endif //  MEM_DEBUG
 
 

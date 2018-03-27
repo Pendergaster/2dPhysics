@@ -56,7 +56,7 @@ void set_uniform_float(const ShaderHandle* shader, const char* name, float value
 {
 	glUniform1f(glGetUniformLocation(shader->progId, name), value);
 }
-void set_mat4(const ShaderHandle* sha, const char* name, float* mat)
+void set_mat4(const ShaderHandle* sha, const char* name, float mat[4][4])
 {
 	int vertexLocation = glGetUniformLocation(sha->progId, name);
 	if (vertexLocation == GL_INVALID_INDEX)

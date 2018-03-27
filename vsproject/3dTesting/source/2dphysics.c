@@ -179,10 +179,10 @@ void insert_to_tree(struct tree* node, Object* obj,struct tree* allocator, uint3
 	{
 		if (node->treebuffer == NULL)
 		{
-			int s = node - allocator;
+			int s = (int)(node - allocator);
 			split_tree(node, allocator, allocatorsize);
 		}
-		uint i = 0;
+		int i = 0;
 		while (i < node->objects.numObjs)
 		{
 			int index = get_index(node, &node->objects.buffer[i]->pos, &node->objects.buffer[i]->dim);
@@ -208,7 +208,7 @@ void get_collisions(struct tree* node, Objectbuffer* buffer, Object* obj)
 	{
 		get_collisions(&node->treebuffer[index], buffer, obj);
 	}
-	for (uint32_t i = 0; i < node->objects.numObjs; i++)
+	for (int i = 0; i < node->objects.numObjs; i++)
 	{
 		Object** newobj = get_new_item_from_buff(buffer);// buffer->get_new_item();
 		*newobj = node->objects.buffer[i];
@@ -240,7 +240,7 @@ typedef struct
 
 } BodyAbstractor;
 
-CREATEDYNAMICARRAY(Object**,bodypools)
+CREATEDYNAMICARRAY(Object*,bodypools)
 CREATEDYNAMICARRAY(BodyAbstractor,freelist)
 
 typedef struct
@@ -274,12 +274,17 @@ inline void dispose_bodyAllocator(BodyAllocator* all)
 
 typedef struct
 {
-	BodyAllocator bAllo;
+	BodyAllocator	bAllo;
+	struct tree*	treeAllocator;
+	int				treeIndex;
 } PhysicsContext;
 
-void init_physicsContext(PhysicsContext* pc)
+void init_physicsContext(PhysicsContext* pc,const vec2 worldPos,const vec2 worldDims)
 {
 	init_body_allocator(&pc->bAllo);
+	pc->treeAllocator = malloc(sizeof(struct tree) * MAX_TREELEVEL);
+	create_new_node(pc->treeAllocator, 0, &worldPos, &worldDims);
+	pc->treeIndex = 1;
 }
 void dispose_physicsContext(PhysicsContext* pc)
 {
@@ -292,7 +297,9 @@ inline Object* get_new_body(PhysicsContext* pc)
 	{
 		if (pc->bAllo.freelist.buff[pc->bAllo.freelist.num - 1].type == single)
 		{
-			POP_ARRAY(pc->bAllo.freelist, ret);
+			BodyAbstractor* temp = NULL;
+			POP_ARRAY(pc->bAllo.freelist, temp);
+			ret = temp->single;
 		}
 		else if(pc->bAllo.freelist.buff[pc->bAllo.freelist.num - 1].type == block)
 		{
@@ -310,12 +317,14 @@ inline Object* get_new_body(PhysicsContext* pc)
 	}
 	else
 	{
-		BodyAbstractor* curArr = &pc->bAllo.bodies.buff[pc->bAllo.bodies.num - 1];
+		Object* curArr = pc->bAllo.bodies.buff[pc->bAllo.bodies.num - 1];
+		
 		ret = &curArr[pc->bAllo.currentindex++];
+
 		if(pc->bAllo.currentindex >= DEFAULT_POOL_SIZE)
 		{ 
-			curArr = malloc(sizeof(Object) * DEFAULT_POOL_SIZE);
-			PUSH_NEW_OBJ(pc->bAllo.bodies, curArr);
+			Object* temp = malloc(sizeof(Object) * DEFAULT_POOL_SIZE);
+			PUSH_NEW_OBJ(pc->bAllo.bodies, temp);
 			pc->bAllo.currentindex = 0;
 			printf("MORE MEMORY ALLOCATED FOR PHYSICS\n");
 		}
@@ -331,9 +340,20 @@ inline void dispose_body(PhysicsContext* pc,Object* obj)
 	PUSH_NEW_OBJ(pc->bAllo.freelist, temp);
 }
 
-void update_bodies(PhysicsContext* pc,float dt,Object* objects,int size)
+void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size)
 {
-
+	clear_tree(pc->treeAllocator);
+	pc->treeIndex = 1;
+	for(int i = 0; i < size; i++)
+	{
+		insert_to_tree(pc->treeAllocator, objects[i], pc->treeAllocator, &pc->treeIndex);
+	}
+	Objectbuffer buffer = { 0 };
+	init_buffer(&buffer);
+	for(int i = 0; i < size; i++)
+	{
+		get_collisions(pc->treeAllocator, &buffer, &objects[i]);
+	}
 }
 
 #undef DEFAULT_POOL_SIZE

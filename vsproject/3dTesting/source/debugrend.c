@@ -90,8 +90,8 @@ void draw_line(DebugRend* rend, const vec2 pos1, const vec2 pos2)
 inline vec2 rotatePoint(const vec2 point, float angle)
 {
 	vec2 newV = { 0 };
-	newV.x = point.x * cos(angle) - point.y *sin(angle);
-	newV.y = point.x * sin(angle) + point.y *cos(angle);
+	newV.x = point.x * cosf(angle) - point.y *sinf(angle);
+	newV.y = point.x * sinf(angle) + point.y *cosf(angle);
 	return newV;
 }
 

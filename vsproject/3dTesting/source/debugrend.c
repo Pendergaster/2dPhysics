@@ -138,6 +138,7 @@ void draw_box(DebugRend* rend,const vec2 pos,const vec2 dim,float angle)
 	PUSH_NEW_OBJ(rend->indexes, ind - 3);
 }
 
+
 void populate_debugRend_buffers(DebugRend* rend)
 {
 	glBindBuffer(GL_ARRAY_BUFFER, rend->vbo);

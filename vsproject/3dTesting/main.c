@@ -522,7 +522,7 @@ int main()
 	init_debugrend(&drend);
 
 	PhysicsContext world = { 0 };
-	init_physicsContext(&world);
+	//init_physicsContext(&world);
 	Object* objects[110] = { 0 };
 	for(int i = 0; i < 110; i++)
 	{

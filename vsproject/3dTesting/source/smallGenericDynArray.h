@@ -1,13 +1,13 @@
 #define GENERICSIZE 10
 #define CREATEDYNAMICARRAY(TYPE,NAME) struct NAME{int size;int num;	TYPE* buff; };
 
-#define INITARRAY(OBJ)\
-OBJ.size = GENERICSIZE;\
-OBJ.num = 0;\
+#define INITARRAY(OBJ)													\
+OBJ.size = GENERICSIZE;													\
+OBJ.num = 0;															\
 OBJ.buff = malloc((sizeof *OBJ.buff) * GENERICSIZE);
 
-#define GET_NEW_OBJ(OBJ,BUFF)\
-do{\
+#define GET_NEW_OBJ(OBJ,BUFF)											\
+do{																		\
 if(OBJ.numObjs + 1 >= OBJ.size){										\
 	OBJ.size *= 2;														\
 	void* temp = OBJ.buff;												\

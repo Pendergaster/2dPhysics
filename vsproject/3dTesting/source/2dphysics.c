@@ -340,7 +340,7 @@ inline void dispose_body(PhysicsContext* pc,Object* obj)
 	PUSH_NEW_OBJ(pc->bAllo.freelist, temp);
 }
 
-void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size)
+void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size,DebugRend* drend)
 {
 	clear_tree(pc->treeAllocator);
 	pc->treeIndex = 1;
@@ -350,9 +350,48 @@ void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size)
 	}
 	Objectbuffer buffer = { 0 };
 	init_buffer(&buffer);
+	typedef struct
+	{
+		Object* a;
+		Object* b;
+	} CollisionTable;
+	CREATEDYNAMICARRAY(CollisionTable, collisiondata);
+
+	struct collisiondata colldata = { 0 };
+	INITARRAY(colldata);
+
 	for(int i = 0; i < size; i++)
 	{
-		get_collisions(pc->treeAllocator, &buffer, &objects[i]);
+		get_collisions(pc->treeAllocator, &buffer, objects[i]);
+
+		for(int  k= 0; k < buffer.numObjs; k++)
+		{
+			if (buffer.buffer[k] == objects[i]) continue;
+
+			//inserted before?
+			uint insert = 1;
+			for(int j = 0; j < colldata.num;i++)
+			{
+				if(colldata.buff[j].b = buffer.buffer[k])
+				{
+					insert = 0;
+					break;
+				}
+			}
+			if(insert)
+			{
+				CollisionTable temp = { .a = buffer.buffer[k],.b = objects[i] };
+				PUSH_NEW_OBJ(colldata, temp);
+			}
+		}
+	}
+	for(int i = 0; i < colldata.num;i++)
+	{
+		if(1)
+		{
+			draw_box(drend, colldata.buff[i].a->pos, colldata.buff[i].a->dim, 0);
+			draw_box(drend, colldata.buff[i].b->pos, colldata.buff[i].b->dim, 0);
+		}
 	}
 }
 

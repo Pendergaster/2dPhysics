@@ -4,6 +4,7 @@ typedef struct
 	vec2	pos;
 	vec2	dim;
 	vec2	velocity;
+	float	rotation;
 } Object;
 
 typedef struct
@@ -282,13 +283,23 @@ typedef struct
 void init_physicsContext(PhysicsContext* pc,const vec2 worldPos,const vec2 worldDims)
 {
 	init_body_allocator(&pc->bAllo);
-	pc->treeAllocator = malloc(sizeof(struct tree) * MAX_TREELEVEL);
+	pc->treeAllocator = calloc((MAX_TREELEVEL *MAX_TREELEVEL * MAX_TREELEVEL *MAX_TREELEVEL )+ 1,sizeof(struct tree) );
 	create_new_node(pc->treeAllocator, 0, &worldPos, &worldDims);
 	pc->treeIndex = 1;
 }
 void dispose_physicsContext(PhysicsContext* pc)
 {
 	dispose_bodyAllocator(&pc->bAllo);
+	
+	int poolamount = 1 + 4 * 4 * 4;
+	for (uint32_t i = 0; i < poolamount; i++)
+	{
+		if (pc->treeAllocator[i].objects.buffer)//->treeAllocator[i].objects.data)
+		{
+			dispose_buffer(&pc->treeAllocator[i].objects.buffer);
+		}
+	}
+	free(pc->treeAllocator);
 }
 inline Object* get_new_body(PhysicsContext* pc)
 {
@@ -340,7 +351,46 @@ inline void dispose_body(PhysicsContext* pc,Object* obj)
 	PUSH_NEW_OBJ(pc->bAllo.freelist, temp);
 }
 
-void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size,DebugRend* drend)
+uint collides(const Object* a,const Object* b)
+{
+	/*vec2 dist = { 0 };
+	add_vec2(&dist, &a->pos, &b->pos);
+	return dist.x < a->dim.x + b->dim.x || dist.y < a->dim.y + b->dim.y;*/
+	float c1 = cosf(a->rotation);
+	float c2 = cosf(b->rotation);
+
+	float s1 = sinf(a->rotation);
+	float s2 = sinf(b->rotation);
+
+	vec2 corners[8] = { 0 };
+	int mult[2] = { 1,1 };
+	for (int i = 0; i < 4; i++)
+	{
+		vec2 co1 = { a->dim.x * mult[0] * c1 + a->dim.y * mult[0] * -s1 , a->dim.x * mult[1] * s1 + a->dim.y * mult[1] * c1 };
+		vec2 co2 = { b->dim.x * mult[0] * c1 + b->dim.y * mult[0] * -s1 , b->dim.x * mult[1] * s1 + b->dim.y * mult[1] * c1 };
+		corners[i] = co1;
+		corners[i + 4] = co2;
+
+		int ind = i & i ? 1 : 0;
+		mult[ind] *= -1;
+	}
+
+	vec2 axis[4] = {
+		{ corners[0].y - corners[1].y  ,-1 * corners[0].x - corners[1].x },
+		{ corners[1].y - corners[2].y  ,-1 * corners[1].x - corners[2].x },
+		{ corners[2].y - corners[3].y  ,-1 * corners[2].x - corners[3].x },
+		{ corners[3].y - corners[0].y  ,-1 * corners[3].x - corners[0].x }
+		};
+	
+	for (int i = 0; i < 4; i++)
+		normalize_vec2(&axis[i]);
+	
+
+
+	return 1;
+}
+
+void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size, DebugRend* drend)
 {
 	clear_tree(pc->treeAllocator);
 	pc->treeIndex = 1;
@@ -355,6 +405,7 @@ void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size,DebugRe
 		Object* a;
 		Object* b;
 	} CollisionTable;
+
 	CREATEDYNAMICARRAY(CollisionTable, collisiondata);
 
 	struct collisiondata colldata = { 0 };
@@ -370,7 +421,7 @@ void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size,DebugRe
 
 			//inserted before?
 			uint insert = 1;
-			for(int j = 0; j < colldata.num;i++)
+			for(int j = 0; j < colldata.num;j++)
 			{
 				if(colldata.buff[j].b = buffer.buffer[k])
 				{
@@ -384,15 +435,18 @@ void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size,DebugRe
 				PUSH_NEW_OBJ(colldata, temp);
 			}
 		}
+		buffer.numObjs = 0;
 	}
 	for(int i = 0; i < colldata.num;i++)
 	{
-		if(1)
+		if(collides(colldata.buff[i].a, colldata.buff[i].b))
 		{
 			draw_box(drend, colldata.buff[i].a->pos, colldata.buff[i].a->dim, 0);
 			draw_box(drend, colldata.buff[i].b->pos, colldata.buff[i].b->dim, 0);
 		}
 	}
+	dispose_buffer(&buffer);
+	DISPOSE_ARRAY(colldata)
 }
 
 #undef DEFAULT_POOL_SIZE

@@ -163,6 +163,13 @@ static inline void normalize_vec3(vec3* v)
 	v->y /= div;
 	v->z /= div;
 }
+static inline void normalize_vec2(vec2* v)
+{
+	float div = vec2_lenght(v);
+	if (div == 0) return;
+	v->x /= div;
+	v->y /= div;
+}
 static inline void create_rotate_mat4(mat4* Result, vec3 axis, float angle)
 {
 	float co = cosf(angle);

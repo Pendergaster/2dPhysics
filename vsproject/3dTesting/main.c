@@ -377,8 +377,8 @@ void update_camera(Camera* cam)
 }
 
 
-#include "source\2dphysics.c"
 #include "source\debugrend.c"
+#include "source\2dphysics.c"
 int main()
 {
 	glfwInit();
@@ -522,20 +522,18 @@ int main()
 	init_debugrend(&drend);
 
 	PhysicsContext world = { 0 };
-	//init_physicsContext(&world);
-	Object* objects[110] = { 0 };
-	for(int i = 0; i < 110; i++)
-	{
-		objects[i] = get_new_body(&world);
-	}
-	for(int i = 0; i < 110; i++)
-	{
-		dispose_body(&world, objects[i]);
-	}
-	for (int i = 0; i < 110; i++)
-	{
-		objects[i] = get_new_body(&world);
-	}
+	vec2 pos1 = { 0.f,0.f };
+	vec2 dimConst = { 100.f , 100.f };
+	init_physicsContext(&world,pos1,dimConst);
+	Object* objects[2] = { 0 };
+	
+	objects[0] = get_new_body(&world);
+	objects[1] = get_new_body(&world);
+	vec2 pos2 = { 150.f,150.f };
+	objects[0]->pos = pos1;
+	objects[0]->dim = dimConst;
+	objects[1]->pos = pos2;
+	objects[1]->dim = dimConst;
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -573,15 +571,18 @@ int main()
 			{
 				camera.pos.y -= cameramovementrate;
 			}
-			draw_box(&drend, pos, dim, ro);
+			update_bodies(&world, (float)dt, objects, 2, &drend);
+	/*		draw_box(&drend, objects[0]->pos, objects[0]->dim, ro);
+			draw_box(&drend, objects[1]->pos, objects[0]->dim, ro);*/
 			vec2 dim2 = { 50,50 };
-			draw_box(&drend, dim, dim2, 0);
+			//draw_box(&drend, dim, dim2, 0);
 			update_keys();
 			populate_debugRend_buffers(&drend);
 		}
 
 
-		push_to_renderer(&rend, &pos, &dim, &uv, ro, box.UserId);
+		push_to_renderer(&rend, &objects[0]->pos, &objects[0]->dim, &uv, 0, box.UserId);
+		push_to_renderer(&rend, &objects[1]->pos, &objects[1]->dim, &uv, 0, box.UserId);
 		create_render_buffers(&rend);
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -647,15 +648,7 @@ void push_to_renderer(Renderer* rend,vec2* pos,vec2* dimensions,vec4* uv,float r
 	data->objectData = objdata;
 	data->rotation = rotation;
 	data->textid = txtid;
-	/*static const float vertex_buffer_data[] = {
-	-0.5f,  0.5f,
-	0.5f, -0.5f,
-	-0.5f, -0.5f,
 
-	-0.5f,  0.5f,
-	0.5f, -0.5f,
-	0.5f,  0.5f,
-};*/
 	uvd->x = uv->x;
 	uvd->y = uv->w;
 	uvd++;

@@ -36,8 +36,8 @@ typedef struct
 {
 	int a;
 } myree;
-#define SCREENWIDHT 800
-#define SCREENHEIGHT 600
+#define SCREENWIDHT 1200
+#define SCREENHEIGHT 800
 
 #define FATALERROR assert(0);
 #define FATALERRORMESSAGE(STRING) printf(STRING); assert(0);
@@ -375,7 +375,14 @@ void update_camera(Camera* cam)
 	vec3 translate = { .x = (-cam->pos.x) + ((float)SCREENWIDHT) / 2.f,.y = (-cam->pos.y) + ((float)SCREENHEIGHT / 2.f),.z = 0.f };
 	translate_mat4(&cam->camera, &cam->ortho, translate);
 }
-
+inline vec2 point_to_world_pos(vec2 orgPos,vec2 camPos)
+{
+	orgPos.y = SCREENHEIGHT - orgPos.y;
+	vec2 temp = { SCREENWIDHT / 2.f , SCREENHEIGHT / 2.f };
+	neg_vec2(&orgPos, &orgPos, &temp);
+	add_vec2(&orgPos, &orgPos, &camPos);
+	return orgPos;
+}
 
 #include "source\debugrend.c"
 #include "source\2dphysics.c"
@@ -523,18 +530,19 @@ int main()
 
 	PhysicsContext world = { 0 };
 	vec2 pos1 = { 0.f,0.f };
-	vec2 dimConst = { 100.f , 100.f };
+	vec2 dimConst = { 50.f , 50.f };
 	init_physicsContext(&world,pos1,dimConst);
 	Object* objects[2] = { 0 };
 	
 	objects[0] = get_new_body(&world);
 	objects[1] = get_new_body(&world);
-	vec2 pos2 = { 150.f,150.f };
+	vec2 pos2 = { 300.f,0.f };
 	objects[0]->pos = pos1;
 	objects[0]->dim = dimConst;
+	objects[0]->rotation = deg_to_rad(45.f);
 	objects[1]->pos = pos2;
 	objects[1]->dim = dimConst;
-
+	objects[1]->rotation = 0;
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
@@ -551,9 +559,9 @@ int main()
 		vec2 dim = { 100.f ,100.f};
 		vec4 uv = { 0.f, 0.f,1.f,1.f };
 		static float ro = 0.f;
-		ro += 0.01f;
 		while (accumulator >= dt)//processloop
 		{
+			ro += 1.f * dt;
 			accumulator -= dt;
 			if (key_down(GLFW_KEY_W))
 			{
@@ -571,6 +579,10 @@ int main()
 			{
 				camera.pos.y -= cameramovementrate;
 			}
+			objects[1]->pos = point_to_world_pos(in.mousepos, camera.pos);
+			objects[1]->rotation += deg_to_rad(ro);
+			objects[0]->rotation += deg_to_rad(ro);
+			printf("%f --- %f \n", objects[1]->pos.x, objects[1]->pos.y);
 			update_bodies(&world, (float)dt, objects, 2, &drend);
 	/*		draw_box(&drend, objects[0]->pos, objects[0]->dim, ro);
 			draw_box(&drend, objects[1]->pos, objects[0]->dim, ro);*/
@@ -581,8 +593,8 @@ int main()
 		}
 
 
-		push_to_renderer(&rend, &objects[0]->pos, &objects[0]->dim, &uv, 0, box.UserId);
-		push_to_renderer(&rend, &objects[1]->pos, &objects[1]->dim, &uv, 0, box.UserId);
+		push_to_renderer(&rend, &objects[0]->pos, &objects[0]->dim, &uv, objects[0]->rotation, box.UserId);
+		push_to_renderer(&rend, &objects[1]->pos, &objects[1]->dim, &uv, objects[1]->rotation , box.UserId);
 		create_render_buffers(&rend);
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

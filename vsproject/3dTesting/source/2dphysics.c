@@ -292,11 +292,11 @@ void dispose_physicsContext(PhysicsContext* pc)
 	dispose_bodyAllocator(&pc->bAllo);
 	
 	int poolamount = 1 + 4 * 4 * 4;
-	for (uint32_t i = 0; i < poolamount; i++)
+	for (int i = 0; i < poolamount; i++)
 	{
 		if (pc->treeAllocator[i].objects.buffer)//->treeAllocator[i].objects.data)
 		{
-			dispose_buffer(&pc->treeAllocator[i].objects.buffer);
+			dispose_buffer(&pc->treeAllocator[i].objects);
 		}
 	}
 	free(pc->treeAllocator);
@@ -351,7 +351,7 @@ inline void dispose_body(PhysicsContext* pc,Object* obj)
 	PUSH_NEW_OBJ(pc->bAllo.freelist, temp);
 }
 
-uint collides(const Object* a,const Object* b)
+uint collides(const Object* a,const Object* b,vec2* MTV,DebugRend* drend)
 {
 	/*vec2 dist = { 0 };
 	add_vec2(&dist, &a->pos, &b->pos);
@@ -364,29 +364,85 @@ uint collides(const Object* a,const Object* b)
 
 	vec2 corners[8] = { 0 };
 	int mult[2] = { 1,1 };
+	mat2 rotate1 = {
+		{	c1 ,s1 ,
+			-s1, c1}
+	};
+	mat2 rotate2 = {
+		{ c2 ,s2 ,
+		-s2, c2 }
+	};
 	for (int i = 0; i < 4; i++)
 	{
-		vec2 co1 = { a->dim.x * mult[0] * c1 + a->dim.y * mult[0] * -s1 , a->dim.x * mult[1] * s1 + a->dim.y * mult[1] * c1 };
-		vec2 co2 = { b->dim.x * mult[0] * c1 + b->dim.y * mult[0] * -s1 , b->dim.x * mult[1] * s1 + b->dim.y * mult[1] * c1 };
-		corners[i] = co1;
-		corners[i + 4] = co2;
-
-		int ind = i & i ? 1 : 0;
+		vec2 co1 = { a->dim.x * mult[0]	, a->dim.y * mult[1] };
+		vec2 co2 = { b->dim.x * mult[0]	, b->dim.y * mult[1] };
+		//vec2 co1 = { a->dim.x * mult[0] * c1 + a->dim.y * mult[0] * -s1				, a->dim.x * mult[1] * -s1 + a->dim.y * mult[1] * c1 };
+		//vec2 co2 = { b->dim.x * mult[0] * c1 + b->dim.y * mult[0] * -s1				, b->dim.x * mult[1] * -s1 + b->dim.y * mult[1] * c1 };
+		corners[i] = mat2_add_vec2(&rotate1,&co1);
+		corners[i].x += a->pos.x;
+		corners[i].y += a->pos.y;
+		corners[i + 4] = mat2_add_vec2(&rotate2, &co2);
+		corners[i + 4].x += b->pos.x;
+		corners[i + 4].y += b->pos.y;
+		int ind = i & 1 ? 1 : 0;
 		mult[ind] *= -1;
 	}
 
 	vec2 axis[4] = {
-		{ corners[0].y - corners[1].y  ,-1 * corners[0].x - corners[1].x },
-		{ corners[1].y - corners[2].y  ,-1 * corners[1].x - corners[2].x },
-		{ corners[2].y - corners[3].y  ,-1 * corners[2].x - corners[3].x },
-		{ corners[3].y - corners[0].y  ,-1 * corners[3].x - corners[0].x }
+		{ corners[0].y - corners[1].y  ,-1 * (corners[0].x - corners[1].x) },
+		{ corners[1].y - corners[2].y  ,-1 *( corners[1].x - corners[2].x )},
+		{ corners[2 + 4].y - corners[3 + 4].y  ,-1 *( corners[2 + 4].x - corners[3 + 4].x)},
+		{ corners[3 + 4].y - corners[0 + 4].y  ,-1 * (corners[3 + 4].x - corners[0 + 4].x) }
 		};
 	
 	for (int i = 0; i < 4; i++)
 		normalize_vec2(&axis[i]);
-	
+	/*
+
+	vec2 temp = { 0 };
+	add_vec2(&temp, &a->pos, &axis[0]);
+	draw_line(drend, a->pos, temp);
+	add_vec2(&temp, &a->pos, &axis[1]);
+	draw_line(drend, a->pos, temp);
+	add_vec2(&temp, &b->pos, &axis[2]);
+	draw_line(drend, b->pos, temp);
+	add_vec2(&temp, &b->pos, &axis[3]);
+	draw_line(drend, b->pos, temp);*/
+	vec2 mtv = { HUGE,HUGE };
+	for(int i = 0; i < 4; i++)
+	{
+			float shortest1 = 454545;
+			float longest1 = 454545;
+
+			float shortest2 = 454545;
+			float longest2 = 454545;
 
 
+		for (int i2 = 0; i2 < 4; i2++) // find largest and shortest point
+		{
+			float o1 = vec2_point(&corners[i2], &axis[i]);
+			float o2 = vec2_point(&corners[i2 + 4], &axis[i]);
+
+			longest1 = o1 >= longest1 || (longest1 == 454545) ? o1 : longest1;
+			shortest1 = (o1 <= shortest1) || (o1 == 454545) ? o1 : shortest1;
+
+			longest2 = o2 >= longest2 || (longest2 == 454545) ? o2 : longest2;
+			shortest2 = (o2 <= shortest2) || (shortest2 == 454545) ? o2 : shortest2;
+
+		}
+		if (shortest2 > longest1 || longest2 < shortest1) {
+			return 0;
+		}
+		//calculate mtv
+		float scalar = longest1 > longest2 ? -(longest2 - shortest1) : longest1 - shortest2;
+		float currLen = vec2_lenght(&mtv);
+		if(abs(scalar) < currLen)
+		{
+			mtv.x = axis[i].x * scalar;
+			mtv.y = axis[i].y * scalar;
+		}
+	}
+	*MTV = mtv;
 	return 1;
 }
 
@@ -439,10 +495,12 @@ void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size, DebugR
 	}
 	for(int i = 0; i < colldata.num;i++)
 	{
-		if(collides(colldata.buff[i].a, colldata.buff[i].b))
+		vec2 mtv = { 0 };
+		if(collides(colldata.buff[i].a, colldata.buff[i].b,&mtv,drend))
 		{
-			draw_box(drend, colldata.buff[i].a->pos, colldata.buff[i].a->dim, 0);
-			draw_box(drend, colldata.buff[i].b->pos, colldata.buff[i].b->dim, 0);
+			add_vec2(&colldata.buff[i].b->pos, &colldata.buff[i].b->pos, &mtv);
+			draw_box(drend, colldata.buff[i].a->pos, colldata.buff[i].a->dim, colldata.buff[i].a->rotation);
+			draw_box(drend, colldata.buff[i].b->pos, colldata.buff[i].b->dim, colldata.buff[i].b->rotation);
 		}
 	}
 	dispose_buffer(&buffer);

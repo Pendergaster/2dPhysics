@@ -50,6 +50,12 @@ typedef struct
 
 typedef struct
 {
+	float mat[2][2];
+} mat2;
+
+
+typedef struct
+{
 	ubyte r;
 	ubyte g;
 	ubyte b;
@@ -59,6 +65,12 @@ typedef struct
 #endif //MATHUTIL_H 
 
 #ifdef MATH_IMPLEMENTATION
+
+static vec2 inline mat2_add_vec2(const mat2* m, const vec2* v)
+{
+	vec2 res = { m->mat[0][0] * v->x + m->mat[1][0] * v->y , m->mat[0][1] * v->x + m->mat[1][1] * v->y };
+	return res;
+}
 
 static void inline orthomat(mat4* ortho, float left, float right, float bottom, float top, float Near, float Far)
 {
@@ -154,6 +166,10 @@ static inline float vec2_lenght(const vec2* v)
 	return sqrtf(v->x * v->x + v->y * v->y);
 }
 
+static inline float vec2_point(const vec2* l, const vec2* r)
+{
+	return l->x * r->x + l->y * r->y;
+}
 
 static inline void normalize_vec3(vec3* v)
 {

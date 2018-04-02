@@ -3,9 +3,23 @@ typedef struct
 {
 	vec2	pos;
 	vec2	dim;
-	vec2	velocity;
-	float	rotation;
+	struct{
+		vec2	velocity;
+		vec2	acceleration;
+		vec2	forces;
+		float	mass;
+	};
+	struct
+	{
+		float	rotation;
+		float	rotVelocity;
+		float	rotAcc;
+		float	momentumOfInteria;
+		float	torque;
+	};
 } Object;
+
+const Object DEFAULTOBJECT = { 0 };
 
 typedef struct
 {
@@ -278,6 +292,7 @@ typedef struct
 	BodyAllocator	bAllo;
 	struct tree*	treeAllocator;
 	int				treeIndex;
+	vec2			gravity;
 } PhysicsContext;
 
 void init_physicsContext(PhysicsContext* pc,const vec2 worldPos,const vec2 worldDims)
@@ -340,6 +355,7 @@ inline Object* get_new_body(PhysicsContext* pc)
 			printf("MORE MEMORY ALLOCATED FOR PHYSICS\n");
 		}
 	}
+	*ret = DEFAULTOBJECT;
 	return ret;
 }
 
@@ -351,7 +367,7 @@ inline void dispose_body(PhysicsContext* pc,Object* obj)
 	PUSH_NEW_OBJ(pc->bAllo.freelist, temp);
 }
 
-uint collides(const Object* a,const Object* b,vec2* MTV,DebugRend* drend)
+uint collides(const Object* a,const Object* b,vec2* MTV,DebugRend* drend,vec2* normal,vec2* collisionPointR)
 {
 	/*vec2 dist = { 0 };
 	add_vec2(&dist, &a->pos, &b->pos);
@@ -361,6 +377,10 @@ uint collides(const Object* a,const Object* b,vec2* MTV,DebugRend* drend)
 
 	float s1 = sinf(a->rotation);
 	float s2 = sinf(b->rotation);
+
+	vec2 norm = { 0 };
+	//vec2 collisionPoint = { 0 };
+
 
 	vec2 corners[8] = { 0 };
 	int mult[2] = { 1,1 };
@@ -397,17 +417,7 @@ uint collides(const Object* a,const Object* b,vec2* MTV,DebugRend* drend)
 	
 	for (int i = 0; i < 4; i++)
 		normalize_vec2(&axis[i]);
-	/*
 
-	vec2 temp = { 0 };
-	add_vec2(&temp, &a->pos, &axis[0]);
-	draw_line(drend, a->pos, temp);
-	add_vec2(&temp, &a->pos, &axis[1]);
-	draw_line(drend, a->pos, temp);
-	add_vec2(&temp, &b->pos, &axis[2]);
-	draw_line(drend, b->pos, temp);
-	add_vec2(&temp, &b->pos, &axis[3]);
-	draw_line(drend, b->pos, temp);*/
 	vec2 mtv = { HUGE,HUGE };
 	for(int i = 0; i < 4; i++)
 	{
@@ -417,6 +427,7 @@ uint collides(const Object* a,const Object* b,vec2* MTV,DebugRend* drend)
 			float shortest2 = 454545;
 			float longest2 = 454545;
 
+			vec2 collP = { 0 };
 
 		for (int i2 = 0; i2 < 4; i2++) // find largest and shortest point
 		{
@@ -424,7 +435,12 @@ uint collides(const Object* a,const Object* b,vec2* MTV,DebugRend* drend)
 			float o2 = vec2_point(&corners[i2 + 4], &axis[i]);
 
 			longest1 = o1 >= longest1 || (longest1 == 454545) ? o1 : longest1;
+		
+
+
 			shortest1 = (o1 <= shortest1) || (o1 == 454545) ? o1 : shortest1;
+
+
 
 			longest2 = o2 >= longest2 || (longest2 == 454545) ? o2 : longest2;
 			shortest2 = (o2 <= shortest2) || (shortest2 == 454545) ? o2 : shortest2;
@@ -440,14 +456,92 @@ uint collides(const Object* a,const Object* b,vec2* MTV,DebugRend* drend)
 		{
 			mtv.x = axis[i].x * scalar;
 			mtv.y = axis[i].y * scalar;
+
+			norm = axis[i];
+			//collisionPoint = collP;
+
 		}
 	}
+	vec2 collisionPoint = { 0 };
+	float lenght = HUGE;
+	for(int i = 0; i < 4; i++)
+	{
+		vec2 distance = { corners[i].x - b->pos.x,corners[i].y - b->pos.y };
+		float nLenght = distance.x * distance.x + distance.y * distance.y;
+		
+		collisionPoint = nLenght < lenght ? corners[i] : collisionPoint;
+		lenght = nLenght < lenght ? nLenght : lenght;
+	}
+	for (int i = 0; i < 4; i++)
+	{
+		vec2 distance = { corners[i + 4].x - a->pos.x,corners[i + 4].y - a->pos.y };
+		float nLenght = distance.x * distance.x + distance.y * distance.y;
+
+		collisionPoint = nLenght < lenght ? corners[i + 4] : collisionPoint;
+		lenght = nLenght < lenght ? nLenght : lenght;
+	}
+
+
+	vec2 tdim = { 5 ,  5 };
+	draw_box(drend, collisionPoint, tdim, 0.f);
+	mtv.x = b->pos.x - a->pos.x;
+	mtv.y = b->pos.y - a->pos.y;
+	*collisionPointR = collisionPoint;
 	*MTV = mtv;
+	*normal = norm;
 	return 1;
 }
+void force_to_body(Object* obj,float x, float y,vec2 force,DebugRend* rend)
+{
+	obj->forces.x += force.x;
+	obj->forces.y += force.y;
 
+	vec2 forceTEMP = { 0 };
+
+	forceTEMP.x = cosf(obj->rotation) * force.x + (-sinf(obj->rotation) * force.y);
+	forceTEMP.y = sinf(obj->rotation) * force.x + (cosf(obj->rotation) * force.y);
+
+
+
+	float tempx = cosf(obj->rotation) * x + (-sinf(obj->rotation) * y);
+	float tempy = sinf(obj->rotation) * x + (cosf(obj->rotation) * y);
+
+	vec2 pos = { cosf(obj->rotation) * x + (-sinf(obj->rotation) * y) + obj->pos.x, sinf(obj->rotation) * x + (cosf(obj->rotation) * y) + obj->pos.y };
+	vec2 dim = { 6,6 };
+
+	vec2 pos2 = { (pos.x + force.x * 4),(pos.y + force.y * 4) };
+	draw_line(rend, pos, pos2);
+	draw_box(rend, pos, dim,obj->rotation);
+
+
+	float perpDotX = -tempy;
+	float perpDorY = tempx;
+
+	obj->torque += perpDotX * force.x + perpDorY * force.y;
+}
 void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size, DebugRend* drend)
 {
+	for (int i = 0; i < size; i++)
+	{
+		objects[i]->rotAcc = objects[i]->torque / objects[i]->momentumOfInteria;
+
+		objects[i]->rotVelocity += objects[i]->rotAcc * dt;
+		objects[i]->rotation += objects[i]->rotVelocity * dt;
+
+		objects[i]->acceleration.x = objects[i]->forces.x / objects[i]->mass;
+		objects[i]->acceleration.y = objects[i]->forces.y / objects[i]->mass;
+
+		objects[i]->velocity.x += (objects[i]->acceleration.x + pc->gravity.x) * dt;
+		objects[i]->velocity.y += (objects[i]->acceleration.y + pc->gravity.y) * dt;
+
+		objects[i]->pos.x += objects[i]->velocity.x * dt;
+		objects[i]->pos.y += objects[i]->velocity.y * dt;
+
+		objects[i]->forces.x = 0;
+		objects[i]->forces.y = 0;
+		objects[i]->torque = 0;
+	}
+
 	clear_tree(pc->treeAllocator);
 	pc->treeIndex = 1;
 	for(int i = 0; i < size; i++)
@@ -496,9 +590,42 @@ void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size, DebugR
 	for(int i = 0; i < colldata.num;i++)
 	{
 		vec2 mtv = { 0 };
-		if(collides(colldata.buff[i].a, colldata.buff[i].b,&mtv,drend))
+		vec2 N = { 0 };
+		vec2 CollisionPoint = { 0 };
+		if(collides(colldata.buff[i].a, colldata.buff[i].b,&mtv,drend,&N, &CollisionPoint))
 		{
-			add_vec2(&colldata.buff[i].b->pos, &colldata.buff[i].b->pos, &mtv);
+			//vec2 N = { 0.f, 1.f };
+			vec2 AP  = { -(CollisionPoint.y - colldata.buff[i].a->pos.y),CollisionPoint.x - colldata.buff[i].a->pos.x };
+			vec2 BP = { -(CollisionPoint.y - colldata.buff[i].b->pos.y),CollisionPoint.x - colldata.buff[i].b->pos.x };
+			//Object* temp = colldata.buff[i].a;
+			//colldata.buff[i].a = colldata.buff[i].b;
+			//colldata.buff[i].b = temp;
+
+			float E = 0.f;
+			float div = (1 / colldata.buff[i].a->mass) + (1 / colldata.buff[i].b->mass);
+			div = N.x * N.x * div + N.y * N.y * div;
+
+			div += ((AP.x * N.x + AP.y * N.y) * (AP.x * N.x + AP.y * N.y)) / colldata.buff[i].a->momentumOfInteria;
+			div += ((BP.x * N.x + BP.y * N.y) * (BP.x * N.x + BP.y * N.y)) / colldata.buff[i].b->momentumOfInteria;
+			float J = (-1*(1 + E) * mtv.x * N.x + (-1*(1 + E)) * mtv.y * N.y) / div;
+
+			vec2 Avel = { (J / colldata.buff[i].a->mass) * N.x + colldata.buff[i].a->velocity.x , (J / colldata.buff[i].a->mass) * N.y + colldata.buff[i].a->velocity.y };
+
+			colldata.buff[i].a->velocity = Avel;
+
+			vec2 Bvel = { -1*(J / colldata.buff[i].b->mass) * N.x + colldata.buff[i].b->velocity.x , -1*(J / colldata.buff[i].b->mass) * N.y + colldata.buff[i].b->velocity.y };
+
+			colldata.buff[i].b->velocity = Bvel;
+
+
+
+			float angularAddOn = ((AP.x * N.x * J + AP.y * N.y * J) / colldata.buff[i].a->momentumOfInteria);
+			colldata.buff[i].a->rotVelocity += angularAddOn;
+
+			angularAddOn = ((BP.x * N.x * -J + BP.y * N.y * -J) / colldata.buff[i].b->momentumOfInteria);
+			colldata.buff[i].b->rotVelocity += angularAddOn;
+
+			//add_vec2(&colldata.buff[i].b->pos, &colldata.buff[i].b->pos, &mtv);
 			draw_box(drend, colldata.buff[i].a->pos, colldata.buff[i].a->dim, colldata.buff[i].a->rotation);
 			draw_box(drend, colldata.buff[i].b->pos, colldata.buff[i].b->dim, colldata.buff[i].b->rotation);
 		}
@@ -506,7 +633,7 @@ void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size, DebugR
 	dispose_buffer(&buffer);
 	DISPOSE_ARRAY(colldata)
 }
-
+//https://en.wikipedia.org/wiki/List_of_moments_of_inertia
 #undef DEFAULT_POOL_SIZE
 #undef	MAX_OBJECTAMOUNT 
 #undef	MAX_TREELEVEL 

@@ -566,7 +566,7 @@ int main()
 	objects[1]->rotation = deg_to_rad(0.f);
 	objects[1]->velocity.x = -0;
 	objects[1]->velocity.y = 0;
-	objects[1]->rotVelocity = deg_to_rad(0); 
+	objects[1]->rotVelocity = deg_to_rad(30); 
 	objects[0]->rotVelocity = deg_to_rad(0);
 	objects[0]->velocity.x = 0;
 	objects[0]->velocity.y = 0;
@@ -655,14 +655,14 @@ int main()
 			
 
 			//printf("%f --- %f \n", objects[1]->pos.x, objects[1]->pos.y);
-			vec2 forceTEMP = { -0.f, 10.f };
+			vec2 forceTEMP = { -0.f, 100.f };
 			
 			vec2 finalforce = forceTEMP;
 
 			/*finalforce.x = cosf(objects[0]->rotation) * forceTEMP.x + (-sinf(objects[0]->rotation) * forceTEMP.y);
 			finalforce.y = sinf(objects[0]->rotation) * forceTEMP.x + (cosf(objects[0]->rotation) * forceTEMP.y);*/
 
-			//force_to_body(objects[0], -dimConst.x, dimConst.y, finalforce,&drend);
+			force_to_body(objects[0], -dimConst.x, dimConst.y, finalforce,&drend);
 			update_bodies(&world, (float)dt, objects, 2, &drend);
 	/*		draw_box(&drend, objects[0]->pos, objects[0]->dim, ro);
 			draw_box(&drend, objects[1]->pos, objects[0]->dim, ro);*/

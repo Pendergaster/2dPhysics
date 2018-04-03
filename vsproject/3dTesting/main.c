@@ -545,18 +545,19 @@ int main()
 	init_debugrend(&drend);
 
 	PhysicsContext world = { 0 };
-	world.gravity.y = -0.f;
-	vec2 pos1 = { 0.f,0.f };
+	world.gravity.y = -50.f;
+	vec2 pos1 = { 0.f,30.f };
 	vec2 dimConst = { 50.f , 50.f };
 	init_physicsContext(&world,pos1,dimConst);
-	Object* objects[2] = { 0 };
+	Object* objects[3] = { 0 };
 	
 	objects[0] = get_new_body(&world);
 	objects[1] = get_new_body(&world);
-	vec2 pos2 = { 0.f,300.f };
+	objects[2] = get_new_body(&world);
+	vec2 pos2 = { 200.f,500.f };
 	objects[0]->pos = pos1;
 	objects[0]->dim = dimConst;
-	objects[0]->rotation = deg_to_rad(10.f);
+	objects[0]->rotation = deg_to_rad(0.f);
 	objects[1]->pos = pos2;
 	objects[1]->dim = dimConst;
 	objects[1]->mass = 10.f;
@@ -573,7 +574,19 @@ int main()
 	objects[1]->velocity.y = -70;
 
 	objects[1]->momentumOfInteria = (1.f / 12.f) * objects[1]->mass *((dimConst.x * 2) * (dimConst.x * 2) + (dimConst.y * 2) * (dimConst.y * 2));
-	objects[0]->momentumOfInteria = objects[1]->momentumOfInteria;
+	objects[0]->momentumOfInteria = (1.f / 12.f) * objects[0]->mass *((dimConst.x * 2) * (dimConst.x * 2) + (dimConst.y * 2) * (dimConst.y * 2));
+
+	objects[1]->Move = 1;
+	objects[0]->Move = 1;
+
+
+	objects[2]->pos.y = -600;
+	objects[2]->dim.y = 400;
+	objects[2]->dim.x = 400;
+	objects[2]->mass = HUGE;
+	objects[2]->momentumOfInteria = (1.f / 12.f) * objects[2]->mass *((dimConst.x * 2) * (dimConst.x * 2) + (dimConst.y * 2) * (dimConst.y * 2));
+	objects[2]->Move = 0;
+	
 
 
 	bg.r = 0.10f, bg.g = 0.18f, bg.b = 0.24f, bg.a = 1.0f;
@@ -662,8 +675,8 @@ int main()
 			/*finalforce.x = cosf(objects[0]->rotation) * forceTEMP.x + (-sinf(objects[0]->rotation) * forceTEMP.y);
 			finalforce.y = sinf(objects[0]->rotation) * forceTEMP.x + (cosf(objects[0]->rotation) * forceTEMP.y);*/
 
-			force_to_body(objects[0], -dimConst.x, dimConst.y, finalforce,&drend);
-			update_bodies(&world, (float)dt, objects, 2, &drend);
+			//force_to_body(objects[0], -dimConst.x, dimConst.y, finalforce,&drend);
+			update_bodies(&world, (float)dt, objects, 3, &drend);
 		
 	/*		draw_box(&drend, objects[0]->pos, objects[0]->dim, ro);
 			draw_box(&drend, objects[1]->pos, objects[0]->dim, ro);*/
@@ -675,6 +688,7 @@ int main()
 
 		push_to_renderer(&rend, &objects[0]->pos, &objects[0]->dim, &uv, objects[0]->rotation, box.UserId);
 		push_to_renderer(&rend, &objects[1]->pos, &objects[1]->dim, &uv, objects[1]->rotation , box.UserId);
+		push_to_renderer(&rend, &objects[2]->pos, &objects[2]->dim, &uv, objects[2]->rotation, box.UserId);
 		create_render_buffers(&rend);
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

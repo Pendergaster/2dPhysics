@@ -17,6 +17,7 @@ typedef struct
 		float	momentumOfInteria;
 		float	torque;
 	};
+	uint Move;
 } Object;
 
 const Object DEFAULTOBJECT = { 0 };
@@ -367,6 +368,16 @@ inline void dispose_body(PhysicsContext* pc,Object* obj)
 	PUSH_NEW_OBJ(pc->bAllo.freelist, temp);
 }
 
+uint AABB(vec2 point,vec2 pos,vec2 dim)
+{
+	float distX = abs(point.x - pos.x);
+	float distY = abs(point.y - pos.y);
+
+	return (distX < dim.x && distY < dim.y);
+
+}
+
+
 uint collides(const Object* a,const Object* b,vec2* MTV,DebugRend* drend,vec2* normal,vec2* collisionPointR)
 {
 	/*vec2 dist = { 0 };
@@ -463,24 +474,42 @@ uint collides(const Object* a,const Object* b,vec2* MTV,DebugRend* drend,vec2* n
 		}
 	}
 	vec2 collisionPoint = { 0 };
-	float lenght = HUGE;
+	/*float lenght = HUGE;*/
+	
+	uint inserted = 0;
 	for(int i = 0; i < 4; i++)
 	{
-		vec2 distance = { corners[i].x - b->pos.x,corners[i].y - b->pos.y };
+		/*vec2 distance = { (corners[i].x - b->pos.x),(corners[i].y - b->pos.y) };
 		float nLenght = distance.x * distance.x + distance.y * distance.y;
 		
 		collisionPoint = nLenght < lenght ? corners[i] : collisionPoint;
-		lenght = nLenght < lenght ? nLenght : lenght;
+		lenght = nLenght < lenght ? nLenght : lenght;*/
+		vec2 temp = rotate_point2D(b->rotation, corners[i], b->pos);
+		if(AABB(temp,b->pos,b->dim))
+		{
+			collisionPoint = corners[i];
+			inserted = 1;
+			break;
+		}
+
 	}
-	for (int i = 0; i < 4; i++)
+	if(!inserted)
 	{
-		vec2 distance = { corners[i + 4].x - a->pos.x,corners[i + 4].y - a->pos.y };
-		float nLenght = distance.x * distance.x + distance.y * distance.y;
+		for (int i = 4; i < 8; i++)
+		{
+			/*vec2 distance = { corners[i + 4].x - a->pos.x,corners[i + 4].y - a->pos.y };
+			float nLenght = distance.x * distance.x + distance.y * distance.y;
 
-		collisionPoint = nLenght < lenght ? corners[i + 4] : collisionPoint;
-		lenght = nLenght < lenght ? nLenght : lenght;
+			collisionPoint = nLenght < lenght ? corners[i + 4] : collisionPoint;
+			lenght = nLenght < lenght ? nLenght : lenght;*/
+			vec2 temp = rotate_point2D(a->rotation, corners[i], a->pos);
+			if (AABB(temp, a->pos, a->dim))
+			{
+				collisionPoint = corners[i];
+				break;
+			}
+		}
 	}
-
 
 	vec2 tdim = { 5 ,  5 };
 	draw_box(drend, collisionPoint, tdim, 0.f);
@@ -519,8 +548,16 @@ void force_to_body(Object* obj,float x, float y,vec2 force,DebugRend* rend)
 
 	obj->torque += perpDotX * force.x + perpDorY * force.y;
 }
+
+#define FOO(...)
+#define MATH_0 vec2_sub(); vec2_();
+
 void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size, DebugRend* drend)
 {
+	FOO((vec2:a + vec2:d * float:c) / float:2)
+
+
+
 	for (int i = 0; i < size; i++)
 	{
 		objects[i]->rotAcc = objects[i]->torque / objects[i]->momentumOfInteria;
@@ -531,8 +568,8 @@ void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size, DebugR
 		objects[i]->acceleration.x = objects[i]->forces.x / objects[i]->mass;
 		objects[i]->acceleration.y = objects[i]->forces.y / objects[i]->mass;
 
-		objects[i]->velocity.x += (objects[i]->acceleration.x + pc->gravity.x) * dt;
-		objects[i]->velocity.y += (objects[i]->acceleration.y + pc->gravity.y) * dt;
+		objects[i]->velocity.x += (objects[i]->acceleration.x + pc->gravity.x * objects[i]->Move) * dt;
+		objects[i]->velocity.y += (objects[i]->acceleration.y + pc->gravity.y * objects[i]->Move) * dt;
 
 		objects[i]->pos.x += objects[i]->velocity.x * dt;
 		objects[i]->pos.y += objects[i]->velocity.y * dt;
@@ -573,7 +610,7 @@ void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size, DebugR
 			uint insert = 1;
 			for(int j = 0; j < colldata.num;j++)
 			{
-				if(colldata.buff[j].b = buffer.buffer[k])
+				if(colldata.buff[j].b == buffer.buffer[k])
 				{
 					insert = 0;
 					break;
@@ -601,16 +638,19 @@ void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size, DebugR
 			//colldata.buff[i].a = colldata.buff[i].b;
 			//colldata.buff[i].b = temp;
 
-			float E = 0.f;
+			float E = 1.f;
 			float div = (1 / colldata.buff[i].a->mass) + (1 / colldata.buff[i].b->mass);
 			div = N.x * N.x * div + N.y * N.y * div;
 
 			div += ((AP.x * N.x + AP.y * N.y) * (AP.x * N.x + AP.y * N.y)) / colldata.buff[i].a->momentumOfInteria;
 			div += ((BP.x * N.x + BP.y * N.y) * (BP.x * N.x + BP.y * N.y)) / colldata.buff[i].b->momentumOfInteria;
-			float J = (-1*(1 + E) * mtv.x * N.x + (-1*(1 + E)) * mtv.y * N.y) / div;
+
+
+			float EmultiPlier = -1 * (1 + E);
+			float J = (EmultiPlier* mtv.x * N.x + EmultiPlier* mtv.y * N.y) / div;
 
 			vec2 Avel = { (J / colldata.buff[i].a->mass) * N.x + colldata.buff[i].a->velocity.x , (J / colldata.buff[i].a->mass) * N.y + colldata.buff[i].a->velocity.y };
-
+				//inserted = 1;
 			colldata.buff[i].a->velocity = Avel;
 
 			vec2 Bvel = { -1*(J / colldata.buff[i].b->mass) * N.x + colldata.buff[i].b->velocity.x , -1*(J / colldata.buff[i].b->mass) * N.y + colldata.buff[i].b->velocity.y };

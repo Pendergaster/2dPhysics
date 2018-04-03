@@ -545,7 +545,7 @@ int main()
 	init_debugrend(&drend);
 
 	PhysicsContext world = { 0 };
-	world.gravity.y = 0.f;
+	world.gravity.y = -0.f;
 	vec2 pos1 = { 0.f,0.f };
 	vec2 dimConst = { 50.f , 50.f };
 	init_physicsContext(&world,pos1,dimConst);
@@ -664,6 +664,7 @@ int main()
 
 			force_to_body(objects[0], -dimConst.x, dimConst.y, finalforce,&drend);
 			update_bodies(&world, (float)dt, objects, 2, &drend);
+		
 	/*		draw_box(&drend, objects[0]->pos, objects[0]->dim, ro);
 			draw_box(&drend, objects[1]->pos, objects[0]->dim, ro);*/
 			vec2 dim2 = { 50,50 };

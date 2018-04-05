@@ -378,7 +378,7 @@ uint AABB(vec2 point,vec2 pos,vec2 dim)
 }
 
 
-uint collides(const Object* a,const Object* b,vec2* MTV,DebugRend* drend,vec2* normal,vec2* collisionPointR)
+uint collides(Object* a,Object* b,vec2* MTV,DebugRend* drend,vec2* normal,vec2* collisionPointR)
 {
 	/*vec2 dist = { 0 };
 	add_vec2(&dist, &a->pos, &b->pos);
@@ -513,6 +513,17 @@ uint collides(const Object* a,const Object* b,vec2* MTV,DebugRend* drend,vec2* n
 
 	vec2 tdim = { 5 ,  5 };
 	draw_box(drend, collisionPoint, tdim, 0.f);
+	if(b->Move)
+	{
+		b->pos.x += mtv.x;
+		b->pos.y += mtv.y;
+	}
+	else
+	{
+		a->pos.x -= mtv.x;
+		a->pos.y -= mtv.y;
+	}
+
 	mtv.x = b->pos.x - a->pos.x;
 	mtv.y = b->pos.y - a->pos.y;
 	*collisionPointR = collisionPoint;
@@ -538,7 +549,7 @@ void force_to_body(Object* obj,float x, float y,vec2 force,DebugRend* rend)
 	vec2 pos = { cosf(obj->rotation) * x + (-sinf(obj->rotation) * y) + obj->pos.x, sinf(obj->rotation) * x + (cosf(obj->rotation) * y) + obj->pos.y };
 	vec2 dim = { 6,6 };
 
-	vec2 pos2 = { (pos.x + force.x * 4),(pos.y + force.y * 4) };
+	vec2 pos2 = { (pos.x + force.x * 1),(pos.y + force.y * 1) };
 	draw_line(rend, pos, pos2);
 	draw_box(rend, pos, dim,obj->rotation);
 
@@ -632,13 +643,18 @@ void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size, DebugR
 		if(collides(colldata.buff[i].a, colldata.buff[i].b,&mtv,drend,&N, &CollisionPoint))
 		{
 			//vec2 N = { 0.f, 1.f };
-			vec2 AP  = { -(CollisionPoint.y - colldata.buff[i].a->pos.y),CollisionPoint.x - colldata.buff[i].a->pos.x };
-			vec2 BP = { -(CollisionPoint.y - colldata.buff[i].b->pos.y),CollisionPoint.x - colldata.buff[i].b->pos.x };
+			vec2 AP  = { -( CollisionPoint.y - colldata.buff[i].a->pos.y), CollisionPoint.x - colldata.buff[i].a->pos.x };
+			vec2 BP = { -(CollisionPoint.y - colldata.buff[i].b->pos.y ),CollisionPoint.x  - colldata.buff[i].b->pos.x  };
+
+
+			vec2 APV = { colldata.buff[i].a->velocity.x + colldata.buff[i].a->rotVelocity * AP.x ,colldata.buff[i].a->velocity.y + colldata.buff[i].a->rotVelocity * AP.y };
+			vec2 BPV = { colldata.buff[i].b->velocity.x + colldata.buff[i].b->rotVelocity * BP.x ,colldata.buff[i].b->velocity.y + colldata.buff[i].b->rotVelocity * BP.y };
+			vec2 ABP = { APV.x - BPV.x,  APV.y - BPV.y };
 			//Object* temp = colldata.buff[i].a;
 			//colldata.buff[i].a = colldata.buff[i].b;
 			//colldata.buff[i].b = temp;
 
-			float E = 1.f;
+			float E = 0.2f;
 			float div = (1 / colldata.buff[i].a->mass) + (1 / colldata.buff[i].b->mass);
 			div = N.x * N.x * div + N.y * N.y * div;
 
@@ -647,7 +663,8 @@ void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size, DebugR
 
 
 			float EmultiPlier = -1 * (1 + E);
-			float J = (EmultiPlier* mtv.x * N.x + EmultiPlier* mtv.y * N.y) / div;
+			//vec2 Dist = { colldata.buff[i].b->pos.x - colldata.buff[i].a->pos.x , colldata.buff[i].b->pos.y - colldata.buff[i].a->pos.y };
+			float J = (EmultiPlier* ABP.x * N.x + EmultiPlier* ABP.y * N.y) / div;
 
 			vec2 Avel = { (J / colldata.buff[i].a->mass) * N.x + colldata.buff[i].a->velocity.x , (J / colldata.buff[i].a->mass) * N.y + colldata.buff[i].a->velocity.y };
 				//inserted = 1;

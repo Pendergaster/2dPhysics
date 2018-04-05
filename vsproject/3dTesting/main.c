@@ -545,8 +545,8 @@ int main()
 	init_debugrend(&drend);
 
 	PhysicsContext world = { 0 };
-	world.gravity.y = -50.f;
-	vec2 pos1 = { 0.f,30.f };
+	world.gravity.y =  -0.f;
+	vec2 pos1 = { 200.f,30.f };
 	vec2 dimConst = { 50.f , 50.f };
 	init_physicsContext(&world,pos1,dimConst);
 	Object* objects[3] = { 0 };
@@ -554,7 +554,7 @@ int main()
 	objects[0] = get_new_body(&world);
 	objects[1] = get_new_body(&world);
 	objects[2] = get_new_body(&world);
-	vec2 pos2 = { 200.f,500.f };
+	vec2 pos2 = {0.f,200.f };
 	objects[0]->pos = pos1;
 	objects[0]->dim = dimConst;
 	objects[0]->rotation = deg_to_rad(0.f);
@@ -567,7 +567,7 @@ int main()
 	objects[1]->rotation = deg_to_rad(0.f);
 	objects[1]->velocity.x = -0;
 	objects[1]->velocity.y = 0;
-	objects[1]->rotVelocity = deg_to_rad(30); 
+	objects[1]->rotVelocity = deg_to_rad(0); 
 	objects[0]->rotVelocity = deg_to_rad(0);
 	objects[0]->velocity.x = 0;
 	objects[0]->velocity.y = 0;
@@ -670,14 +670,20 @@ int main()
 			//printf("%f --- %f \n", objects[1]->pos.x, objects[1]->pos.y);
 			vec2 forceTEMP = { -0.f, 100.f };
 			
-			vec2 finalforce = forceTEMP;
+			vec2 MousePos = {0};
+			
 
+			vec2 finalforce = point_to_world_pos(in.mousepos, camera.pos);
+			finalforce.x -= objects[0]->pos.x;
+			finalforce.y -= objects[0]->pos.y;
+			finalforce.x *= 10;
+			finalforce.y *= 10;
 			/*finalforce.x = cosf(objects[0]->rotation) * forceTEMP.x + (-sinf(objects[0]->rotation) * forceTEMP.y);
 			finalforce.y = sinf(objects[0]->rotation) * forceTEMP.x + (cosf(objects[0]->rotation) * forceTEMP.y);*/
 
-			//force_to_body(objects[0], -dimConst.x, dimConst.y, finalforce,&drend);
-			update_bodies(&world, (float)dt, objects, 3, &drend);
-		
+			force_to_body(objects[0], -dimConst.x * 0, dimConst.y, finalforce,&drend);
+			update_bodies(&world, (float)dt / 2.f, objects, 3, &drend);
+			update_bodies(&world, (float)dt / 2.f, objects, 3, &drend);
 	/*		draw_box(&drend, objects[0]->pos, objects[0]->dim, ro);
 			draw_box(&drend, objects[1]->pos, objects[0]->dim, ro);*/
 			vec2 dim2 = { 50,50 };

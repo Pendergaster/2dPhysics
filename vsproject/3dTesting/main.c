@@ -534,7 +534,7 @@ int main()
 
 
 
-	const double dt = 1.0 / 60.0;
+	const double dt = 1.0 / 600.0;
 
 	double currentTime = glfwGetTime();
 	double accumulator = 0.0;
@@ -545,8 +545,8 @@ int main()
 	init_debugrend(&drend);
 
 	PhysicsContext world = { 0 };
-	world.gravity.y =  -0.f;
-	vec2 pos1 = { 200.f,30.f };
+	world.gravity.y =  -300.f;
+	vec2 pos1 = { 40.f,100.f };
 	vec2 dimConst = { 50.f , 50.f };
 	init_physicsContext(&world,pos1,dimConst);
 	Object* objects[3] = { 0 };
@@ -554,7 +554,7 @@ int main()
 	objects[0] = get_new_body(&world);
 	objects[1] = get_new_body(&world);
 	objects[2] = get_new_body(&world);
-	vec2 pos2 = {0.f,200.f };
+	vec2 pos2 = {0.f,250.f };
 	objects[0]->pos = pos1;
 	objects[0]->dim = dimConst;
 	objects[0]->rotation = deg_to_rad(0.f);
@@ -566,12 +566,12 @@ int main()
 
 	objects[1]->rotation = deg_to_rad(0.f);
 	objects[1]->velocity.x = -0;
-	objects[1]->velocity.y = 0;
+	objects[1]->velocity.y = 100000000000000;
 	objects[1]->rotVelocity = deg_to_rad(0); 
 	objects[0]->rotVelocity = deg_to_rad(0);
 	objects[0]->velocity.x = 0;
 	objects[0]->velocity.y = 0;
-	objects[1]->velocity.y = -70;
+	objects[1]->velocity.y = -0;
 
 	objects[1]->momentumOfInteria = (1.f / 12.f) * objects[1]->mass *((dimConst.x * 2) * (dimConst.x * 2) + (dimConst.y * 2) * (dimConst.y * 2));
 	objects[0]->momentumOfInteria = (1.f / 12.f) * objects[0]->mass *((dimConst.x * 2) * (dimConst.x * 2) + (dimConst.y * 2) * (dimConst.y * 2));
@@ -580,13 +580,13 @@ int main()
 	objects[0]->Move = 1;
 
 
-	objects[2]->pos.y = -600;
+	objects[2]->pos.y = -700;
 	objects[2]->dim.y = 400;
 	objects[2]->dim.x = 400;
 	objects[2]->mass = HUGE;
 	objects[2]->momentumOfInteria = (1.f / 12.f) * objects[2]->mass *((dimConst.x * 2) * (dimConst.x * 2) + (dimConst.y * 2) * (dimConst.y * 2));
 	objects[2]->Move = 0;
-	
+	objects[2]->rotation = deg_to_rad(10.f);
 
 
 	bg.r = 0.10f, bg.g = 0.18f, bg.b = 0.24f, bg.a = 1.0f;
@@ -681,9 +681,9 @@ int main()
 			/*finalforce.x = cosf(objects[0]->rotation) * forceTEMP.x + (-sinf(objects[0]->rotation) * forceTEMP.y);
 			finalforce.y = sinf(objects[0]->rotation) * forceTEMP.x + (cosf(objects[0]->rotation) * forceTEMP.y);*/
 
-			force_to_body(objects[0], -dimConst.x * 0, dimConst.y, finalforce,&drend);
-			update_bodies(&world, (float)dt / 2.f, objects, 3, &drend);
-			update_bodies(&world, (float)dt / 2.f, objects, 3, &drend);
+			//force_to_body(objects[0], -dimConst.x * 0, dimConst.y, finalforce,&drend);
+			//update_bodies(&world, (float)dt / 2.f, objects, 3, &drend);
+			update_bodies(&world, (float)dt, objects, 3, &drend);
 	/*		draw_box(&drend, objects[0]->pos, objects[0]->dim, ro);
 			draw_box(&drend, objects[1]->pos, objects[0]->dim, ro);*/
 			vec2 dim2 = { 50,50 };

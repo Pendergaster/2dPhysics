@@ -373,7 +373,7 @@ uint AABB(vec2 point,vec2 pos,vec2 dim)
 	float distX = abs(point.x - pos.x);
 	float distY = abs(point.y - pos.y);
 
-	return (distX < dim.x && distY < dim.y);
+	return (distX <= dim.x && distY <= dim.y);
 
 }
 
@@ -485,8 +485,13 @@ uint collides(Object* a,Object* b,vec2* MTV,DebugRend* drend,vec2* normal,vec2* 
 		collisionPoint = nLenght < lenght ? corners[i] : collisionPoint;
 		lenght = nLenght < lenght ? nLenght : lenght;*/
 		vec2 temp = rotate_point2D(b->rotation, corners[i], b->pos);
-		if(AABB(temp,b->pos,b->dim))
+		vec2 nulllll = { 0 };
+		if(AABB(temp,nulllll/*b->pos*/,b->dim))
 		{
+			if (b->dim.x == 400)
+			{
+				int abcd = 0;
+			}
 			collisionPoint = corners[i];
 			inserted = 1;
 			break;
@@ -503,14 +508,25 @@ uint collides(Object* a,Object* b,vec2* MTV,DebugRend* drend,vec2* normal,vec2* 
 			collisionPoint = nLenght < lenght ? corners[i + 4] : collisionPoint;
 			lenght = nLenght < lenght ? nLenght : lenght;*/
 			vec2 temp = rotate_point2D(a->rotation, corners[i], a->pos);
-			if (AABB(temp, a->pos, a->dim))
+			vec2 nulllll = { 0 };
+			if (AABB(temp, nulllll/* a->pos*/, a->dim))
 			{
+				if(a->dim.x == 400)
+				{
+					int abcd = 0;
+				}
 				collisionPoint = corners[i];
+				inserted = 1;
 				break;
 			}
 		}
 	}
-
+	if(!inserted)
+	{
+		int abcd = 0;
+		return 0;
+	}
+	assert(inserted);
 	vec2 tdim = { 5 ,  5 };
 	draw_box(drend, collisionPoint, tdim, 0.f);
 	if(b->Move)
@@ -654,7 +670,7 @@ void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size, DebugR
 			//colldata.buff[i].a = colldata.buff[i].b;
 			//colldata.buff[i].b = temp;
 
-			float E = 0.2f;
+			float E = 0.5f;
 			float div = (1 / colldata.buff[i].a->mass) + (1 / colldata.buff[i].b->mass);
 			div = N.x * N.x * div + N.y * N.y * div;
 

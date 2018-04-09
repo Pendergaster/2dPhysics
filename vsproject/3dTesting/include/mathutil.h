@@ -461,12 +461,12 @@ static vec2 inline rotate_point2D(float angle, vec2 point,const vec2 pos)
 	point.y -= pos.y;
 
 	mat2 rotater = {
-		cosf(angle) , sinf(angle), -sinf(angle) , cosf(angle)
+		cosf(angle) , -sinf(angle), sinf(angle) , cosf(angle)
 	};
 	point = mat2_add_vec2(&rotater, &point);
 
-	point.x += pos.x;
-	point.y += pos.y;
+	/*point.x += pos.x;
+	point.y += pos.y;*/
 	
 	return point;
 }

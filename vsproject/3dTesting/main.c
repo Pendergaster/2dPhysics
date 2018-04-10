@@ -37,8 +37,8 @@ typedef struct
 {
 	int a;
 } myree;
-#define SCREENWIDHT 1200
-#define SCREENHEIGHT 800
+#define SCREENWIDHT 1900
+#define SCREENHEIGHT 1500
 
 #define FATALERROR assert(0);
 #define FATALERRORMESSAGE(STRING) printf(STRING); assert(0);

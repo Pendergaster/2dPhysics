@@ -10,9 +10,6 @@
 #include <stb_image.h>
 
 
-#include <nuklear.h>
-#include <nuklear_glfw_gl3.h>
-
 static int MEMTRACK = 0;
 
 inline void* DEBUG_MALLOC(int size)
@@ -432,16 +429,7 @@ int main()
 	init_keys();
 
 
-	struct nk_context *ctx;
-	struct nk_colorf bg;
-
-	ctx = nk_glfw3_init(window, NK_GLFW3_INSTALL_CALLBACKS);
-
-	{struct nk_font_atlas *atlas;
-	nk_glfw3_font_stash_begin(&atlas);
-	nk_glfw3_font_stash_end(); }
-
-
+	
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -549,86 +537,21 @@ int main()
 	vec2 pos1 = { 40.f,100.f };
 	vec2 dimConst = { 50.f , 50.f };
 	init_physicsContext(&world,pos1,dimConst);
-	Object* objects[3] = { 0 };
+#define NUM_OBJS 6
+	Object* objects[NUM_OBJS] = { 0 };
+	for(int i = 0; i < NUM_OBJS - 1; i++)
+	{
+		objects[i] = get_new_body(&world, -300 + 100 * i, 250.f + 200 * i, dimConst.x, dimConst.y, 0, 0, 0,i *  10, 10, 1);
+	}
+
 	
-	objects[0] = get_new_body(&world);
-	objects[1] = get_new_body(&world);
-	objects[2] = get_new_body(&world);
-	vec2 pos2 = {0.f,250.f };
-	objects[0]->pos = pos1;
-	objects[0]->dim = dimConst;
-	objects[0]->rotation = deg_to_rad(0.f);
-	objects[1]->pos = pos2;
-	objects[1]->dim = dimConst;
-	objects[1]->mass = 10.f;
-	objects[0]->mass = 10.f;
+	objects[NUM_OBJS - 1] = get_new_body(&world,0,-700,400,400,0,0,0,0,HUGE,0);
+	
 
-
-	objects[1]->rotation = deg_to_rad(0.f);
-	objects[1]->velocity.x = -0;
-	objects[1]->velocity.y = 100000000000000;
-	objects[1]->rotVelocity = deg_to_rad(0); 
-	objects[0]->rotVelocity = deg_to_rad(0);
-	objects[0]->velocity.x = 0;
-	objects[0]->velocity.y = 0;
-	objects[1]->velocity.y = -0;
-
-	objects[1]->momentumOfInteria = (1.f / 12.f) * objects[1]->mass *((dimConst.x * 2) * (dimConst.x * 2) + (dimConst.y * 2) * (dimConst.y * 2));
-	objects[0]->momentumOfInteria = (1.f / 12.f) * objects[0]->mass *((dimConst.x * 2) * (dimConst.x * 2) + (dimConst.y * 2) * (dimConst.y * 2));
-
-	objects[1]->Move = 1;
-	objects[0]->Move = 1;
-
-
-	objects[2]->pos.y = -700;
-	objects[2]->dim.y = 400;
-	objects[2]->dim.x = 400;
-	objects[2]->mass = HUGE;
-	objects[2]->momentumOfInteria = (1.f / 12.f) * objects[2]->mass *((dimConst.x * 2) * (dimConst.x * 2) + (dimConst.y * 2) * (dimConst.y * 2));
-	objects[2]->Move = 0;
-	objects[2]->rotation = deg_to_rad(10.f);
-
-
-	bg.r = 0.10f, bg.g = 0.18f, bg.b = 0.24f, bg.a = 1.0f;
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
-		nk_glfw3_new_frame();
-
-
-		if (nk_begin(ctx, "Demo", nk_rect(50, 50, 230, 250),
-			NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE |
-			NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE))
-		{
-			enum { EASY, HARD };
-			static int op = EASY;
-			static int property = 20;
-			nk_layout_row_static(ctx, 30, 80, 1);
-			if (nk_button_label(ctx, "button"))
-				fprintf(stdout, "button pressed\n");
-
-			nk_layout_row_dynamic(ctx, 30, 2);
-			if (nk_option_label(ctx, "easy", op == EASY)) op = EASY;
-			if (nk_option_label(ctx, "hard", op == HARD)) op = HARD;
-
-			nk_layout_row_dynamic(ctx, 25, 1);
-			nk_property_int(ctx, "Compression:", 0, &property, 100, 10, 1);
-
-			nk_layout_row_dynamic(ctx, 20, 1);
-			nk_label(ctx, "background:", NK_TEXT_LEFT);
-			nk_layout_row_dynamic(ctx, 25, 1);
-			if (nk_combo_begin_color(ctx, nk_rgb_cf(bg), nk_vec2(nk_widget_width(ctx), 400))) {
-				nk_layout_row_dynamic(ctx, 120, 1);
-				bg = nk_color_picker(ctx, bg, NK_RGBA);
-				nk_layout_row_dynamic(ctx, 25, 1);
-				bg.r = nk_propertyf(ctx, "#R:", 0, bg.r, 1.0f, 0.01f, 0.005f);
-				bg.g = nk_propertyf(ctx, "#G:", 0, bg.g, 1.0f, 0.01f, 0.005f);
-				bg.b = nk_propertyf(ctx, "#B:", 0, bg.b, 1.0f, 0.01f, 0.005f);
-				bg.a = nk_propertyf(ctx, "#A:", 0, bg.a, 1.0f, 0.01f, 0.005f);
-				nk_combo_end(ctx);
-			}
-		}
-		nk_end(ctx);
+		
 
 		double newTime = glfwGetTime();
 
@@ -664,10 +587,7 @@ int main()
 			{
 				camera.pos.y -= cameramovementrate;
 			}
-			//objects[1]->pos = point_to_world_pos(in.mousepos, camera.pos);
-			
 
-			//printf("%f --- %f \n", objects[1]->pos.x, objects[1]->pos.y);
 			vec2 forceTEMP = { -0.f, 100.f };
 			
 			vec2 MousePos = {0};
@@ -682,19 +602,22 @@ int main()
 			finalforce.y = sinf(objects[0]->rotation) * forceTEMP.x + (cosf(objects[0]->rotation) * forceTEMP.y);*/
 
 			//force_to_body(objects[0], -dimConst.x * 0, dimConst.y, finalforce,&drend);
-			//update_bodies(&world, (float)dt / 2.f, objects, 3, &drend);
-			update_bodies(&world, (float)dt, objects, 3, &drend);
-	/*		draw_box(&drend, objects[0]->pos, objects[0]->dim, ro);
-			draw_box(&drend, objects[1]->pos, objects[0]->dim, ro);*/
-			vec2 dim2 = { 50,50 };
-			//draw_box(&drend, dim, dim2, 0);
+
+			update_bodies(&world, (float)dt, objects, 6, &drend);
+	
+	
+	
 			update_keys();
 			populate_debugRend_buffers(&drend);
 		}
 
-		push_to_renderer(&rend, &objects[0]->pos, &objects[0]->dim, &uv, objects[0]->rotation, box.UserId);
-		push_to_renderer(&rend, &objects[1]->pos, &objects[1]->dim, &uv, objects[1]->rotation , box.UserId);
-		push_to_renderer(&rend, &objects[2]->pos, &objects[2]->dim, &uv, objects[2]->rotation, box.UserId);
+		
+		for(int i = 0; i < NUM_OBJS; i++)
+		{
+			push_to_renderer(&rend, &objects[i]->pos, &objects[i]->dim, &uv, objects[i]->rotation, box.UserId);
+		}
+
+
 		create_render_buffers(&rend);
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -704,48 +627,7 @@ int main()
 		update_camera(&camera);
 		render(&shader, &rend, &camera.camera, &campos);
 
-		GLenum last_active_texture; glGetIntegerv(GL_ACTIVE_TEXTURE, (GLint*)&last_active_texture);
-		glActiveTexture(GL_TEXTURE0);
-		GLint last_program; glGetIntegerv(GL_CURRENT_PROGRAM, &last_program);
-		GLint last_texture; glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
-		GLint last_sampler; glGetIntegerv(GL_SAMPLER_BINDING, &last_sampler);
-		GLint last_array_buffer; glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &last_array_buffer);
-		GLint last_element_array_buffer; glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &last_element_array_buffer);
-		GLint last_vertex_array; glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &last_vertex_array);
-		GLint last_polygon_mode[2]; glGetIntegerv(GL_POLYGON_MODE, last_polygon_mode);
-		GLint last_viewport[4]; glGetIntegerv(GL_VIEWPORT, last_viewport);
-		GLint last_scissor_box[4]; glGetIntegerv(GL_SCISSOR_BOX, last_scissor_box);
-		GLenum last_blend_src_rgb; glGetIntegerv(GL_BLEND_SRC_RGB, (GLint*)&last_blend_src_rgb);
-		GLenum last_blend_dst_rgb; glGetIntegerv(GL_BLEND_DST_RGB, (GLint*)&last_blend_dst_rgb);
-		GLenum last_blend_src_alpha; glGetIntegerv(GL_BLEND_SRC_ALPHA, (GLint*)&last_blend_src_alpha);
-		GLenum last_blend_dst_alpha; glGetIntegerv(GL_BLEND_DST_ALPHA, (GLint*)&last_blend_dst_alpha);
-		GLenum last_blend_equation_rgb; glGetIntegerv(GL_BLEND_EQUATION_RGB, (GLint*)&last_blend_equation_rgb);
-		GLenum last_blend_equation_alpha; glGetIntegerv(GL_BLEND_EQUATION_ALPHA, (GLint*)&last_blend_equation_alpha);
-		GLboolean last_enable_blend = glIsEnabled(GL_BLEND);
-		GLboolean last_enable_cull_face = glIsEnabled(GL_CULL_FACE);
-		GLboolean last_enable_depth_test = glIsEnabled(GL_DEPTH_TEST);
-		GLboolean last_enable_scissor_test = glIsEnabled(GL_SCISSOR_TEST);
-
-		nk_glfw3_render(NK_ANTI_ALIASING_ON, MAX_VERTEX_BUFFER, MAX_ELEMENT_BUFFER);
-
-		glUseProgram(last_program);
-		glBindTexture(GL_TEXTURE_2D, last_texture);
-		glBindSampler(0, last_sampler);
-		glActiveTexture(last_active_texture);
-		glBindVertexArray(last_vertex_array);
-		glBindBuffer(GL_ARRAY_BUFFER, last_array_buffer);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, last_element_array_buffer);
-		glBlendEquationSeparate(last_blend_equation_rgb, last_blend_equation_alpha);
-		glBlendFuncSeparate(last_blend_src_rgb, last_blend_dst_rgb, last_blend_src_alpha, last_blend_dst_alpha);
-		if (last_enable_blend) glEnable(GL_BLEND); else glDisable(GL_BLEND);
-		if (last_enable_cull_face) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
-		if (last_enable_depth_test) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
-		if (last_enable_scissor_test) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
-		glPolygonMode(GL_FRONT_AND_BACK, (GLenum)last_polygon_mode[0]);
-		glViewport(last_viewport[0], last_viewport[1], (GLsizei)last_viewport[2], (GLsizei)last_viewport[3]);
-		glScissor(last_scissor_box[0], last_scissor_box[1], (GLsizei)last_scissor_box[2], (GLsizei)last_scissor_box[3]);
-
-
+		
 	/*	vec3 translate = { .x = (-campos.x) + ((float)SCREENWIDHT) / 2.f,.y = (-campos.y) + ((float)SCREENHEIGHT / 2.f),.z = 0.f };
 		mat4 bind = { 0 };*/
 		//translate_mat4(&bind, &camera.camera, translate);
@@ -753,7 +635,6 @@ int main()
 		render_debug_lines(&drend, &camera.camera);
 		glfwSwapBuffers(window);
 	}
-	nk_glfw3_shutdown();
 
 	free(rend.uvdata);
 	free(rend.vertdata);

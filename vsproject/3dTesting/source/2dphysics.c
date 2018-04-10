@@ -49,11 +49,6 @@ inline void dispose_buffer(Objectbuffer* b)
 	b->numObjs = 0;
 	b->sizeOfBuffer = 0;
 }
-struct ree
-{
-	int a;
-	struct ree* k;
-};
 
 struct tree
 {
@@ -63,8 +58,6 @@ struct tree
 	vec2						pos;
 	vec2						dim;
 };
-
-
 
 void create_new_node(struct tree* node, uint level, const vec2* pos, const vec2* dim)
 {
@@ -140,10 +133,9 @@ inline int get_index(struct tree* node, vec2* pos, vec2* dim)
 {
 	int index = -1;
 
-	//if true it can fit to bottom place
 	uint bot = pos->y - dim->y  > node->pos.y - node->dim.y
 		&& pos->y + dim->y <  node->pos.y;
-	//if true it can fit to top place
+	
 	uint top = pos->y - dim->y  > node->pos.y
 		&& pos->y + dim->y <  node->pos.y + node->dim.y;
 
@@ -317,7 +309,7 @@ void dispose_physicsContext(PhysicsContext* pc)
 	}
 	free(pc->treeAllocator);
 }
-inline Object* get_new_body(PhysicsContext* pc)
+inline Object* get_new_body(PhysicsContext* pc,float posx,float posy,float dimx,float dimy,float velx,float vely,float rotvel,float rot,float mass,uint movable)
 {
 	Object* ret = NULL;
 	if (pc->bAllo.freelist.num)
@@ -357,6 +349,17 @@ inline Object* get_new_body(PhysicsContext* pc)
 		}
 	}
 	*ret = DEFAULTOBJECT;
+
+	ret->dim.x = dimx;
+	ret->dim.y = dimy;
+	ret->pos.x = posx;
+	ret->pos.y = posy;
+	ret->mass = mass;
+	ret->rotation = rot;
+	ret->rotVelocity = rotvel;
+	ret->momentumOfInteria = (1.f / 12.f) * mass *((dimx * 2) * (dimx * 2) + (dimy * 2) * (dimy * 2));
+	ret->Move = movable;
+
 	return ret;
 }
 
@@ -377,12 +380,8 @@ uint AABB(vec2 point,vec2 pos,vec2 dim)
 
 }
 
-
-uint collides(Object* a,Object* b,vec2* MTV,DebugRend* drend,vec2* normal,vec2* collisionPointR)
+uint collides(Object* a,Object* b,DebugRend* drend,vec2* normal,vec2* collisionPointR)
 {
-	/*vec2 dist = { 0 };
-	add_vec2(&dist, &a->pos, &b->pos);
-	return dist.x < a->dim.x + b->dim.x || dist.y < a->dim.y + b->dim.y;*/
 	float c1 = cosf(a->rotation);
 	float c2 = cosf(b->rotation);
 
@@ -407,8 +406,6 @@ uint collides(Object* a,Object* b,vec2* MTV,DebugRend* drend,vec2* normal,vec2* 
 	{
 		vec2 co1 = { a->dim.x * mult[0]	, a->dim.y * mult[1] };
 		vec2 co2 = { b->dim.x * mult[0]	, b->dim.y * mult[1] };
-		//vec2 co1 = { a->dim.x * mult[0] * c1 + a->dim.y * mult[0] * -s1				, a->dim.x * mult[1] * -s1 + a->dim.y * mult[1] * c1 };
-		//vec2 co2 = { b->dim.x * mult[0] * c1 + b->dim.y * mult[0] * -s1				, b->dim.x * mult[1] * -s1 + b->dim.y * mult[1] * c1 };
 		corners[i] = mat2_add_vec2(&rotate1,&co1);
 		corners[i].x += a->pos.x;
 		corners[i].y += a->pos.y;
@@ -469,24 +466,17 @@ uint collides(Object* a,Object* b,vec2* MTV,DebugRend* drend,vec2* normal,vec2* 
 			mtv.y = axis[i].y * scalar;
 
 			norm = axis[i];
-			//collisionPoint = collP;
-
 		}
 	}
 	vec2 collisionPoint = { 0 };
-	/*float lenght = HUGE;*/
+
 	
 	uint inserted = 0;
 	for(int i = 0; i < 4; i++)
 	{
-		/*vec2 distance = { (corners[i].x - b->pos.x),(corners[i].y - b->pos.y) };
-		float nLenght = distance.x * distance.x + distance.y * distance.y;
-		
-		collisionPoint = nLenght < lenght ? corners[i] : collisionPoint;
-		lenght = nLenght < lenght ? nLenght : lenght;*/
 		vec2 temp = rotate_point2D(b->rotation, corners[i], b->pos);
 		vec2 nulllll = { 0 };
-		if(AABB(temp,nulllll/*b->pos*/,b->dim))
+		if(AABB(temp,nulllll,b->dim))
 		{
 			if (b->dim.x == 400)
 			{
@@ -502,14 +492,9 @@ uint collides(Object* a,Object* b,vec2* MTV,DebugRend* drend,vec2* normal,vec2* 
 	{
 		for (int i = 4; i < 8; i++)
 		{
-			/*vec2 distance = { corners[i + 4].x - a->pos.x,corners[i + 4].y - a->pos.y };
-			float nLenght = distance.x * distance.x + distance.y * distance.y;
-
-			collisionPoint = nLenght < lenght ? corners[i + 4] : collisionPoint;
-			lenght = nLenght < lenght ? nLenght : lenght;*/
 			vec2 temp = rotate_point2D(a->rotation, corners[i], a->pos);
 			vec2 nulllll = { 0 };
-			if (AABB(temp, nulllll/* a->pos*/, a->dim))
+			if (AABB(temp, nulllll, a->dim))
 			{
 				if(a->dim.x == 400)
 				{
@@ -540,10 +525,7 @@ uint collides(Object* a,Object* b,vec2* MTV,DebugRend* drend,vec2* normal,vec2* 
 		a->pos.y -= mtv.y;
 	}
 
-	mtv.x = b->pos.x - a->pos.x;
-	mtv.y = b->pos.y - a->pos.y;
 	*collisionPointR = collisionPoint;
-	*MTV = mtv;
 	*normal = norm;
 	return 1;
 }
@@ -576,15 +558,9 @@ void force_to_body(Object* obj,float x, float y,vec2 force,DebugRend* rend)
 	obj->torque += perpDotX * force.x + perpDorY * force.y;
 }
 
-#define FOO(...)
-#define MATH_0 vec2_sub(); vec2_();
 
 void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size, DebugRend* drend)
 {
-	FOO((vec2:a + vec2:d * float:c) / float:2)
-
-
-
 	for (int i = 0; i < size; i++)
 	{
 		objects[i]->rotAcc = objects[i]->torque / objects[i]->momentumOfInteria;
@@ -633,7 +609,7 @@ void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size, DebugR
 		{
 			if (buffer.buffer[k] == objects[i]) continue;
 
-			//inserted before?
+			
 			uint insert = 1;
 			for(int j = 0; j < colldata.num;j++)
 			{
@@ -653,10 +629,10 @@ void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size, DebugR
 	}
 	for(int i = 0; i < colldata.num;i++)
 	{
-		vec2 mtv = { 0 };
+		
 		vec2 N = { 0 };
 		vec2 CollisionPoint = { 0 };
-		if(collides(colldata.buff[i].a, colldata.buff[i].b,&mtv,drend,&N, &CollisionPoint))
+		if(collides(colldata.buff[i].a, colldata.buff[i].b,drend,&N, &CollisionPoint))
 		{
 			//vec2 N = { 0.f, 1.f };
 			vec2 AP  = { -( CollisionPoint.y - colldata.buff[i].a->pos.y), CollisionPoint.x - colldata.buff[i].a->pos.x };
@@ -666,11 +642,7 @@ void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size, DebugR
 			vec2 APV = { colldata.buff[i].a->velocity.x + colldata.buff[i].a->rotVelocity * AP.x ,colldata.buff[i].a->velocity.y + colldata.buff[i].a->rotVelocity * AP.y };
 			vec2 BPV = { colldata.buff[i].b->velocity.x + colldata.buff[i].b->rotVelocity * BP.x ,colldata.buff[i].b->velocity.y + colldata.buff[i].b->rotVelocity * BP.y };
 			vec2 ABP = { APV.x - BPV.x,  APV.y - BPV.y };
-			//Object* temp = colldata.buff[i].a;
-			//colldata.buff[i].a = colldata.buff[i].b;
-			//colldata.buff[i].b = temp;
-
-			float E = 0.5f;
+			float E = 1.f;
 			float div = (1 / colldata.buff[i].a->mass) + (1 / colldata.buff[i].b->mass);
 			div = N.x * N.x * div + N.y * N.y * div;
 
@@ -679,7 +651,7 @@ void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size, DebugR
 
 
 			float EmultiPlier = -1 * (1 + E);
-			//vec2 Dist = { colldata.buff[i].b->pos.x - colldata.buff[i].a->pos.x , colldata.buff[i].b->pos.y - colldata.buff[i].a->pos.y };
+			
 			float J = (EmultiPlier* ABP.x * N.x + EmultiPlier* ABP.y * N.y) / div;
 
 			vec2 Avel = { (J / colldata.buff[i].a->mass) * N.x + colldata.buff[i].a->velocity.x , (J / colldata.buff[i].a->mass) * N.y + colldata.buff[i].a->velocity.y };
@@ -698,7 +670,7 @@ void update_bodies(PhysicsContext* pc,float dt,Object** objects,int size, DebugR
 			angularAddOn = ((BP.x * N.x * -J + BP.y * N.y * -J) / colldata.buff[i].b->momentumOfInteria);
 			colldata.buff[i].b->rotVelocity += angularAddOn;
 
-			//add_vec2(&colldata.buff[i].b->pos, &colldata.buff[i].b->pos, &mtv);
+			
 			draw_box(drend, colldata.buff[i].a->pos, colldata.buff[i].a->dim, colldata.buff[i].a->rotation);
 			draw_box(drend, colldata.buff[i].b->pos, colldata.buff[i].b->dim, colldata.buff[i].b->rotation);
 		}

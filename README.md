@@ -7,8 +7,8 @@ I used C as programming language and project is build as unity build.
 
 # Short overview
 
-Has rotations and restitution. Pool allocator for bodies and quadtree as data structure.
-Uses SAT(Seperating axis theorem) as collision check.
+Physics has rotations and restitution. There is pool allocator for bodies and quadtree as a data structure for faster collision checking.
+Uses SAT(Seperating axis theorem) for collision check.
 
 
 # **Small demo gif**
